@@ -96,11 +96,27 @@ public class PlayerController : MonoBehaviour
 
     private void Shoot()
     {
-        Vector3 mouseWorldPos = mainCam.ScreenToWorldPoint(Input.mousePosition);
-        Vector2 shootDirection = (mouseWorldPos - firePoint.position);
+        if (bulletPrefab == null || firePoint == null) return;
 
-        GameObject bullet = Instantiate(bulletPrefab, firePoint.position, Quaternion.identity);
-        bullet.GetComponent<PlayerBullet>().Initialize(shootDirection);
+        Vector3 mouseWorldPos = mainCam.ScreenToWorldPoint(Input.mousePosition);
+        Vector2 rawDirection = mouseWorldPos - firePoint.position;
+
+        Vector2 shootDirection;
+
+        if (rawDirection.sqrMagnitude < 0.01f)
+            shootDirection = gunTransform.right;
+        else
+            shootDirection = rawDirection.normalized;
+
+        // Offset bullet spawn forward by 0.2 units (adjust if needed)
+        Vector2 spawnPos = (Vector2)firePoint.position + shootDirection * 0.2f;
+
+        GameObject bullet = Instantiate(bulletPrefab, spawnPos, Quaternion.identity);
+
+        PlayerBullet bulletScript = bullet.GetComponent<PlayerBullet>();
+        if (bulletScript != null)
+            bulletScript.Initialize(shootDirection);
     }
+
 
 }

@@ -26,9 +26,16 @@ public class PlayerBullet : MonoBehaviour
         transform.Translate(direction * speed * Time.deltaTime, Space.World);
     }
 
-    private void OnTriggerEnter2D(Collider2D collision)
+    private void OnTriggerEnter2D(Collider2D other)
     {
-        // Destroy on collision or add logic to damage enemies
-        Destroy(gameObject);
+        // Optional: check if it's the player or an enemy
+        if (other.CompareTag("Player"))
+        {
+            // You can still apply damage or effects here
+            Debug.Log("Hit player!");
+        }
+
+        Destroy(gameObject); // Or keep it going if you want pierce
     }
+
 }
