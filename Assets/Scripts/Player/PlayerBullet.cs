@@ -28,14 +28,19 @@ public class PlayerBullet : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        // Optional: check if it's the player or an enemy
         if (other.CompareTag("Player"))
         {
             // You can still apply damage or effects here
             Debug.Log("Hit player!");
+            Destroy(gameObject); 
         }
 
-        Destroy(gameObject); // Or keep it going if you want pierce
+        if (other.CompareTag("Enemy"))
+        {
+            Health enemyHealth = other.GetComponent<Health>();
+            if (enemyHealth != null)
+                enemyHealth.TakeDamage(20f); 
+            Destroy(gameObject);
+        }
     }
-
 }
