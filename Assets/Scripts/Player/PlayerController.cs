@@ -17,6 +17,10 @@ public class PlayerController : MonoBehaviour
     public SpriteRenderer playerSpriteRenderer;
     public SpriteRenderer gunSpriteRenderer;
 
+    [Header("Shooting Settings")]
+    public GameObject bulletPrefab;
+    public Transform firePoint; // assign an empty GameObject at barrel tip
+
     private Rigidbody2D rb;
     private Vector2 movementInput;
     private Camera mainCam;
@@ -25,8 +29,16 @@ public class PlayerController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         mainCam = Camera.main;
-        moveSpeed = playerData.moveSpeed;
-        faceMouse = playerData.faceMouse;
+
+        if (playerData != null)
+        {
+            moveSpeed = playerData.moveSpeed;
+            faceMouse = playerData.faceMouse;
+        }
+        else
+        {
+            Debug.LogWarning("PlayerData not assigned to PlayerController.");
+        }
     }
 
     void Update()
@@ -46,14 +58,21 @@ public class PlayerController : MonoBehaviour
         movementInput.x = Input.GetAxisRaw("Horizontal");
         movementInput.y = Input.GetAxisRaw("Vertical");
         movementInput.Normalize(); // consistent diagonal speed
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            Shoot();
+        }
+
     }
 
     private void Move()
     {
-        rb.velocity = movementInput * moveSpeed;
+        Vector2 newPosition = rb.position + movementInput * moveSpeed * Time.fixedDeltaTime;
+        rb.MovePosition(newPosition);
     }
 
-     private void HandleFlip()
+    private void HandleFlip()
     {
         Vector3 mouseWorldPos = mainCam.ScreenToWorldPoint(Input.mousePosition);
         bool isMouseLeft = mouseWorldPos.x < transform.position.x;
@@ -67,9 +86,21 @@ public class PlayerController : MonoBehaviour
 
     private void RotateGunToMouse()
     {
+        if (!faceMouse) return;
+
         Vector3 mouseWorldPos = mainCam.ScreenToWorldPoint(Input.mousePosition);
-        Vector2 direction = (mouseWorldPos - gunTransform.position);
+        Vector2 direction = mouseWorldPos - gunTransform.position;
         float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
         gunTransform.rotation = Quaternion.Euler(0, 0, angle);
     }
+
+    private void Shoot()
+    {
+        Vector3 mouseWorldPos = mainCam.ScreenToWorldPoint(Input.mousePosition);
+        Vector2 shootDirection = (mouseWorldPos - firePoint.position);
+
+        GameObject bullet = Instantiate(bulletPrefab, firePoint.position, Quaternion.identity);
+        bullet.GetComponent<PlayerBullet>().Initialize(shootDirection);
+    }
+
 }
