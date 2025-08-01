@@ -279,10 +279,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 50f40b5a137e6544ba98b69ef7ec2b6f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 2
+  moveSpeed: 0.8
   bulletPrefab: {fileID: 2300189211221088423, guid: 25745d248c0da454ca2f44493e502833, type: 3}
   firePoint: {fileID: 1533966383}
-  shootCooldown: 100
+  shootCooldown: 1
 --- !u!212 &506679339
 SpriteRenderer:
   m_ObjectHideFlags: 0
