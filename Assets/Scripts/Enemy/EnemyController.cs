@@ -1,31 +1,51 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class EnemyController : MonoBehaviour
 {
+    [Header("Movement")]
     public float moveSpeed = 2f;
+
+    [Header("Shooting")]
     public GameObject bulletPrefab;
     public Transform firePoint;
     public float shootCooldown = 1f;
     private float shootTimer;
-    private Transform player;
+
+    [Header("Targeting")]
+    private Transform currentTarget;
+    private Transform lastDamagedBy;
+
+    private static List<Transform> allPlayers = new();
 
     void Start()
     {
-        player = GameObject.FindGameObjectWithTag("Player").transform;
+        UpdatePlayerList();
     }
 
     void Update()
     {
-        if (!player) return;
+        if (currentTarget == null || !currentTarget.gameObject.activeInHierarchy)
+            currentTarget = GetTarget();
 
-        // Move toward player
-        Vector2 dir = (player.position - transform.position).normalized;
+        if (currentTarget == null)
+            return;
+
+        MoveToward(currentTarget);
+        AimAndShoot(currentTarget);
+    }
+
+    // Self Explanatory
+    void MoveToward(Transform target)
+    {
+        Vector2 dir = (target.position - transform.position).normalized;
         transform.position += (Vector3)dir * moveSpeed * Time.deltaTime;
+    }
 
-        // Face and shoot
-        Vector2 shootDir = player.position - firePoint.position;
+    // Self Explanatory
+    void AimAndShoot(Transform target)
+    {
+        Vector2 shootDir = target.position - firePoint.position;
         firePoint.rotation = Quaternion.Euler(0, 0, Mathf.Atan2(shootDir.y, shootDir.x) * Mathf.Rad2Deg);
 
         shootTimer -= Time.deltaTime;
@@ -36,9 +56,60 @@ public class EnemyController : MonoBehaviour
         }
     }
 
+    // Self Explanatory
     void Shoot(Vector2 dir)
     {
         GameObject bullet = Instantiate(bulletPrefab, firePoint.position, Quaternion.identity);
-        bullet.GetComponent<EnemyBullet>().Initialize(dir, 10f); // 10 dmg
+        bullet.GetComponent<EnemyBullet>().Initialize(dir, 10f); // I'll make this a var later
+    }
+
+    // Choose target based on who damage most recently otherwise does closest
+    Transform GetTarget()
+    {
+        if (lastDamagedBy != null && lastDamagedBy.gameObject.activeInHierarchy)
+            return lastDamagedBy;
+
+        Transform closest = null;
+        float minDist = Mathf.Infinity;
+
+        foreach (var p in allPlayers)
+        {
+            if (p == null || !p.gameObject.activeInHierarchy) continue;
+
+            float dist = Vector2.Distance(transform.position, p.position);
+            if (dist < minDist)
+            {
+                minDist = dist;
+                closest = p;
+            }
+        }
+
+        return closest;
+    }
+
+
+    // Simple helpers
+    public void SetLastDamagedBy(Transform player)
+    {
+        lastDamagedBy = player;
+    }
+
+    public static void RegisterPlayer(Transform player)
+    {
+        if (!allPlayers.Contains(player))
+            allPlayers.Add(player);
+    }
+
+    public static void UnregisterPlayer(Transform player)
+    {
+        allPlayers.Remove(player);
+    }
+
+    void UpdatePlayerList()
+    {
+        foreach (var go in GameObject.FindGameObjectsWithTag("Player"))
+        {
+            RegisterPlayer(go.transform);
+        }
     }
 }
