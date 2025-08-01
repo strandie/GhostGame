@@ -21,6 +21,10 @@ public class PlayerController : MonoBehaviour
     public GameObject bulletPrefab;
     public Transform firePoint; // assign an empty GameObject at barrel tip
 
+    [Range(0f, 1f)]
+    public float accuracy = 0.7f; // 1 good 0 bad
+    public float maxSpreadAngle = 15f;
+
     private Rigidbody2D rb;
     private Vector2 movementInput;
     private Camera mainCam;
@@ -101,19 +105,23 @@ public class PlayerController : MonoBehaviour
         Vector3 mouseWorldPos = mainCam.ScreenToWorldPoint(Input.mousePosition);
         Vector2 rawDirection = mouseWorldPos - firePoint.position;
 
-        float minShootRadius = 1.0f; // Adjusts threshold on when gun shoots inward 
+        float minShootRadius = 1.0f;
 
         Vector2 shootDirection;
 
         if (rawDirection.sqrMagnitude < minShootRadius * minShootRadius)
         {
-            // Cursor is too close, shoot outward in gun's current direction
             shootDirection = gunTransform.right;
         }
         else
         {
             shootDirection = rawDirection.normalized;
         }
+
+        float spreadAngle = Mathf.Lerp(maxSpreadAngle, 0f, accuracy);
+        float randomOffset = Random.Range(-spreadAngle / 2f, spreadAngle / 2f);
+
+        shootDirection = Quaternion.Euler(0, 0, randomOffset) * shootDirection;
 
         Vector2 spawnPos = (Vector2)firePoint.position + shootDirection * 0.2f;
 
@@ -123,4 +131,5 @@ public class PlayerController : MonoBehaviour
         if (bulletScript != null)
             bulletScript.Initialize(shootDirection);
     }
+
 }

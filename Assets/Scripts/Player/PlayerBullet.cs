@@ -5,7 +5,7 @@ using UnityEngine;
 public class PlayerBullet : MonoBehaviour
 {
     public float speed = 10f;
-    public float lifeTime = 2f;
+    public float lifeTime = 10f;
 
     private Vector2 direction;
 

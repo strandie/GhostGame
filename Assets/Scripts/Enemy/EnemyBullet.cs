@@ -5,7 +5,7 @@ using UnityEngine;
 public class EnemyBullet : MonoBehaviour
 {
     public float speed = 10f;
-    public float lifeTime = 2f;
+    public float lifeTime = 10f;
     private float damage;
     private Vector2 direction;
 
@@ -13,6 +13,9 @@ public class EnemyBullet : MonoBehaviour
     {
         direction = dir.normalized;
         damage = dmg;
+        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+        transform.rotation = Quaternion.Euler(0, 0, angle);
+
         Destroy(gameObject, lifeTime);
     }
 

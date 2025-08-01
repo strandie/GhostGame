@@ -9,7 +9,7 @@ public class EnemyController : MonoBehaviour
     [Header("Shooting")]
     public GameObject bulletPrefab;
     public Transform firePoint;
-    public float shootCooldown = 1f;
+    public float shootCooldown = 0.5f;
     private float shootTimer;
 
     [Header("Targeting")]
