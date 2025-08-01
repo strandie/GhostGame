@@ -1,14 +1,13 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using System.Collections;
 
 public class DamageFlash : MonoBehaviour
 {
     public SpriteRenderer spriteRenderer;
-    public Color flashColor = Color.red;
+    public Material flashMaterial; // Use a URP shader graph material that’s solid white
     public float flashDuration = 0.1f;
 
-    private Color originalColor;
+    private Material originalMaterial;
     private Coroutine flashRoutine;
 
     void Awake()
@@ -17,7 +16,7 @@ public class DamageFlash : MonoBehaviour
             spriteRenderer = GetComponent<SpriteRenderer>();
 
         if (spriteRenderer)
-            originalColor = spriteRenderer.color;
+            originalMaterial = spriteRenderer.material;
     }
 
     public void Flash()
@@ -28,10 +27,10 @@ public class DamageFlash : MonoBehaviour
         flashRoutine = StartCoroutine(DoFlash());
     }
 
-    private System.Collections.IEnumerator DoFlash()
+    private IEnumerator DoFlash()
     {
-        spriteRenderer.color = flashColor;
+        spriteRenderer.material = flashMaterial;
         yield return new WaitForSeconds(flashDuration);
-        spriteRenderer.color = originalColor;
+        spriteRenderer.material = originalMaterial;
     }
 }

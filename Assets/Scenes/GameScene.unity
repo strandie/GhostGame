@@ -639,7 +639,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   spriteRenderer: {fileID: 1991519629}
-  flashColor: {r: 1, g: 0, b: 0, a: 1}
+  flashMaterial: {fileID: 2100000, guid: adca223ece48fee458562cb28005a3f2, type: 2}
   flashDuration: 0.1
 --- !u!1 &1130824685
 GameObject:
