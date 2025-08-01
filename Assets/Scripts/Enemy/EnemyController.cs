@@ -3,8 +3,11 @@ using UnityEngine;
 
 public class EnemyController : MonoBehaviour
 {
+
+    private Rigidbody2D rb;
+
     [Header("Movement")]
-    public float moveSpeed = 2f;
+    public float moveSpeed = 1f;
 
     [Header("Shooting")]
     public GameObject bulletPrefab;
@@ -20,6 +23,7 @@ public class EnemyController : MonoBehaviour
 
     void Start()
     {
+        rb = GetComponent<Rigidbody2D>();
         UpdatePlayerList();
     }
 
@@ -28,18 +32,23 @@ public class EnemyController : MonoBehaviour
         if (currentTarget == null || !currentTarget.gameObject.activeInHierarchy)
             currentTarget = GetTarget();
 
+        AimAndShoot(currentTarget);
+    }
+
+    void FixedUpdate()
+    {
         if (currentTarget == null)
             return;
 
         MoveToward(currentTarget);
-        AimAndShoot(currentTarget);
     }
 
     // Self Explanatory
     void MoveToward(Transform target)
     {
         Vector2 dir = (target.position - transform.position).normalized;
-        transform.position += (Vector3)dir * moveSpeed * Time.deltaTime;
+        Vector2 nextPos = rb.position + dir * moveSpeed * Time.deltaTime;
+        rb.MovePosition(nextPos);
     }
 
     // Self Explanatory

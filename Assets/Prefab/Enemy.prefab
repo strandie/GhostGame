@@ -15,7 +15,7 @@ GameObject:
   - component: {fileID: 8791242541391990582}
   - component: {fileID: 8781281260836951659}
   - component: {fileID: 7576591008873932586}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Enemy
   m_TagString: Enemy
   m_Icon: {fileID: 0}
@@ -102,7 +102,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 50f40b5a137e6544ba98b69ef7ec2b6f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 0.8
+  moveSpeed: 1
   bulletPrefab: {fileID: 2300189211221088423, guid: 25745d248c0da454ca2f44493e502833, type: 3}
   firePoint: {fileID: 6179216794817982578}
   shootCooldown: 0.5
@@ -151,7 +151,7 @@ Rigidbody2D:
   m_Interpolate: 0
   m_SleepingMode: 1
   m_CollisionDetection: 0
-  m_Constraints: 0
+  m_Constraints: 4
 --- !u!61 &8781281260836951659
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -221,7 +221,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6179216794817982578}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: EnemyFirePoint
   m_TagString: Untagged
   m_Icon: {fileID: 0}

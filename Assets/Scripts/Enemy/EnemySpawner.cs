@@ -5,13 +5,14 @@ using UnityEngine;
 public class EnemySpawner : MonoBehaviour
 {
     public GameObject enemyPrefab; // assign your enemy prefab here
-    public int spawnCount = 5;
+    public int spawnCount = 2;
     public float spawnRadius = 5f;
 
     void Start()
     {
         for (int i = 0; i < spawnCount; i++)
         {
+            Debug.Log("here");
             Vector3 spawnPos = transform.position + Random.insideUnitSphere * spawnRadius;
             spawnPos.z = 0; // for 2D top-down games
             SpawnEnemy(spawnPos);
