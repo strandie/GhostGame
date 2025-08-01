@@ -1,7 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -12,6 +8,9 @@ public class Health : MonoBehaviour
 
     public UnityEvent<float> onHealthChanged;
     public UnityEvent onDeath;
+
+    public float CurrentHealth => currentHealth;
+    public float MaxHealth => maxHealth;
 
     void Awake()
     {
@@ -25,16 +24,20 @@ public class Health : MonoBehaviour
         currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
         onHealthChanged.Invoke(currentHealth / maxHealth);
 
+        DamageFlash flash = GetComponent<DamageFlash>();
+        if (flash != null)
+            flash.Flash();
+
         if (currentHealth <= 0f)
         {
             Die();
         }
     }
 
+
     private void Die()
     {
         onDeath.Invoke();
-        Destroy(gameObject); // Optional: trigger animation instead
+        Destroy(gameObject); 
     }
 }
-
