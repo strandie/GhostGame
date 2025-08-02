@@ -83,10 +83,20 @@ public class PlayerController : MonoBehaviour
 
         playerSpriteRenderer.flipX = isMouseLeft;
 
-        Vector3 gunScale = gunTransform.localScale;
-        gunScale.y = isMouseLeft ? -1 : 1;
-        gunTransform.localScale = gunScale;
+        Vector3 gunLocalPos = gunTransform.localPosition;
+        gunLocalPos.x = Mathf.Abs(gunLocalPos.x) * (isMouseLeft ? -1 : 1);
+        gunTransform.localPosition = gunLocalPos;
+
+        gunTransform.localScale = Vector3.one;
+
+        if (gunSpriteRenderer != null)
+            gunSpriteRenderer.flipY = isMouseLeft;
+
+        Vector3 firePointLocalPos = firePoint.localPosition;
+        firePointLocalPos.y = Mathf.Abs(firePointLocalPos.y) * (isMouseLeft ? -1 : 1);
+        firePoint.localPosition = firePointLocalPos;
     }
+
 
     private void RotateGunToMouse()
     {
