@@ -6,6 +6,7 @@ public class PlayerBullet : MonoBehaviour
 {
     public float speed = 10f;
     public float lifeTime = 10f;
+    public float damage = 20f; // Make damage public for ghost system
 
     private Vector2 direction;
 
@@ -19,7 +20,6 @@ public class PlayerBullet : MonoBehaviour
 
         Destroy(gameObject, lifeTime);
     }
-
 
     void Update()
     {
@@ -39,8 +39,32 @@ public class PlayerBullet : MonoBehaviour
         {
             Health enemyHealth = other.GetComponent<Health>();
             if (enemyHealth != null)
-                enemyHealth.TakeDamage(20f); 
+            {
+                enemyHealth.TakeDamage(damage);
+                
+                // Notify enemy who damaged them (for targeting)
+                EnemyController enemyController = other.GetComponent<EnemyController>();
+                if (enemyController != null)
+                {
+                    // Find the player who shot this bullet
+                    GameObject player = GameObject.FindGameObjectWithTag("Player");
+                    if (player != null)
+                        enemyController.SetLastDamagedBy(player.transform);
+                }
+            }
             Destroy(gameObject);
+        }
+        
+        // Add ghost collision handling
+        if (other.CompareTag("Ghost")) // You'll need to create this tag
+        {
+            GhostDamageHandler ghost = other.GetComponent<GhostDamageHandler>();
+            if (ghost != null)
+            {
+                // The GhostDamageHandler will handle the damage
+                // Bullet destruction is handled in GhostDamageHandler
+                return;
+            }
         }
     }
 }

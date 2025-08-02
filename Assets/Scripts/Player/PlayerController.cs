@@ -31,6 +31,8 @@ public class PlayerController : MonoBehaviour
 
     private Animator animator;
 
+    [Header("Recording")]
+    public PlayerRecorder playerRecorder; // Assign in inspector
 
     void Awake()
     {
@@ -49,6 +51,9 @@ public class PlayerController : MonoBehaviour
         {
             Debug.LogWarning("PlayerData not assigned to PlayerController.");
         }
+
+        if (playerRecorder == null)
+            playerRecorder = GetComponent<PlayerRecorder>();
     }
 
     void Update()
@@ -147,6 +152,9 @@ public class PlayerController : MonoBehaviour
         PlayerBullet bulletScript = bullet.GetComponent<PlayerBullet>();
         if (bulletScript != null)
             bulletScript.Initialize(shootDirection);
+
+        if (playerRecorder != null)
+            playerRecorder.NotifyShoot(shootDirection);
     }
 
 }

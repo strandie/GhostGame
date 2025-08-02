@@ -19,6 +19,12 @@ public class EnemyBullet : MonoBehaviour
         Destroy(gameObject, lifeTime);
     }
 
+    // Add this getter method for the ghost system
+    public float GetDamage()
+    {
+        return damage;
+    }
+
     void Update()
     {
         transform.Translate(direction * speed * Time.deltaTime, Space.World);
@@ -33,6 +39,18 @@ public class EnemyBullet : MonoBehaviour
                 player.TakeDamage(damage);
 
             Destroy(gameObject);
+        }
+        
+        // Add ghost collision handling
+        if (other.CompareTag("Ghost")) // You'll need to create this tag
+        {
+            GhostDamageHandler ghost = other.GetComponent<GhostDamageHandler>();
+            if (ghost != null)
+            {
+                // The GhostDamageHandler will handle the damage
+                // Bullet destruction is handled in GhostDamageHandler
+                return;
+            }
         }
     }
 }
