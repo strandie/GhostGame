@@ -230,6 +230,54 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 616332945}
   m_CullTransparentMesh: 1
+--- !u!1 &651684462
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 651684464}
+  - component: {fileID: 651684463}
+  m_Layer: 0
+  m_Name: GameObject
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &651684463
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 651684462}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b8285c04020d8e408878a278eaef507, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rewindDuration: 5
+  snapshotsPerSecond: 30
+  rewindKey: 324
+  ghostPlayerPrefab: {fileID: 3612694641499282806, guid: 8de3163c0c7e2f045a2569c6bc3072fb, type: 3}
+--- !u!4 &651684464
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 651684462}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.49993533, y: 0.9583193, z: 2.6631382}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &835333949
 GameObject:
   m_ObjectHideFlags: 0
@@ -591,7 +639,7 @@ MonoBehaviour:
   firePoint: {fileID: 1254986501}
   accuracy: 0.7
   maxSpreadAngle: 50
-  playerRecorder: {fileID: 0}
+  playerRecorder: {fileID: 928125200}
 --- !u!70 &928125194
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -684,6 +732,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxHealth: 100
+  currentHealth: 0
   onHealthChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -736,6 +785,7 @@ MonoBehaviour:
   playerController: {fileID: 928125192}
   gunTransform: {fileID: 377372982}
   playerSpriteRenderer: {fileID: 1991519629}
+  playerHealth: {fileID: 928125197}
 --- !u!1 &1130824685
 GameObject:
   m_ObjectHideFlags: 0
@@ -1788,3 +1838,4 @@ SceneRoots:
   - {fileID: 1529340796}
   - {fileID: 1197560793}
   - {fileID: 867855262}
+  - {fileID: 651684464}

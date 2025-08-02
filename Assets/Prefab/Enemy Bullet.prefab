@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 5532375080660560745}
   - component: {fileID: 8709283091572166402}
   - component: {fileID: 1965133376543611990}
-  - component: {fileID: 8860433201920678191}
+  - component: {fileID: 4633422262737706404}
   m_Layer: 8
   m_Name: Enemy Bullet
   m_TagString: EnemyBullet
@@ -97,7 +97,7 @@ CircleCollider2D:
   m_Offset: {x: 0, y: 0}
   serializedVersion: 2
   m_Radius: 0.14
---- !u!114 &8860433201920678191
+--- !u!114 &4633422262737706404
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -106,7 +106,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 2300189211221088423}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 74978ef2af6da21409b5fa038ecad3df, type: 3}
+  m_Script: {fileID: 11500000, guid: 2d3d2a95b5d137b4fb303049b1d50f31, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   speed: 10
