@@ -4,12 +4,18 @@ using UnityEngine.Events;
 public class Health : MonoBehaviour
 {
     public float maxHealth = 100f;
-    private float currentHealth;
+    [SerializeField] private float currentHealth;
+
+    public float CurrentHealth 
+    {
+        get => currentHealth;
+        set => currentHealth = value;
+    }
 
     public UnityEvent<float> onHealthChanged;
     public UnityEvent onDeath;
 
-    public float CurrentHealth => currentHealth;
+    //public float CurrentHealth => currentHealth;
     public float MaxHealth => maxHealth;
 
     void Awake()

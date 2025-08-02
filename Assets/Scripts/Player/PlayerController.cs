@@ -120,7 +120,7 @@ public class PlayerController : MonoBehaviour
         gunTransform.rotation = Quaternion.Euler(0, 0, angle);
     }
 
-    private void Shoot()
+    /*private void Shoot()
     {
         if (bulletPrefab == null || firePoint == null) return;
 
@@ -153,6 +153,45 @@ public class PlayerController : MonoBehaviour
         if (bulletScript != null)
             bulletScript.Initialize(shootDirection);
 
+        if (playerRecorder != null)
+            playerRecorder.NotifyShoot(shootDirection);
+    }*/
+
+    private void Shoot()
+    {
+        if (bulletPrefab == null || firePoint == null) return;
+
+        Vector3 mouseWorldPos = mainCam.ScreenToWorldPoint(Input.mousePosition);
+        Vector2 rawDirection = mouseWorldPos - firePoint.position;
+
+        float minShootRadius = 1.0f;
+
+        Vector2 shootDirection;
+
+        if (rawDirection.sqrMagnitude < minShootRadius * minShootRadius)
+        {
+            shootDirection = gunTransform.right;
+        }
+        else
+        {
+            shootDirection = rawDirection.normalized;
+        }
+
+        float spreadAngle = Mathf.Lerp(maxSpreadAngle, 0f, accuracy);
+        float randomOffset = Random.Range(-spreadAngle / 2f, spreadAngle / 2f);
+
+        shootDirection = Quaternion.Euler(0, 0, randomOffset) * shootDirection;
+
+        Vector2 spawnPos = (Vector2)firePoint.position + shootDirection * 0.2f;
+
+        GameObject bullet = Instantiate(bulletPrefab, spawnPos, Quaternion.identity);
+
+        // Use RewindablePlayerBullet instead of PlayerBullet
+        RewindablePlayerBullet bulletScript = bullet.GetComponent<RewindablePlayerBullet>();
+        if (bulletScript != null)
+            bulletScript.Initialize(shootDirection);
+        
+        // NOTIFY THE RECORDER ABOUT THE SHOT (CRITICAL FOR MULTIPLE SHOTS)
         if (playerRecorder != null)
             playerRecorder.NotifyShoot(shootDirection);
     }

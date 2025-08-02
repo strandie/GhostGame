@@ -100,7 +100,7 @@ public class GhostPlayer : MonoBehaviour
             }
             return;
         }
-        
+
         PlayerAction currentAction = actionsToReplay[currentActionIndex];
         
         // Calculate the time this action should be played based on the original timestamp

@@ -26,7 +26,7 @@ public class PlayerAction
     }
 }
 
-public class PlayerRecorder : MonoBehaviour
+public class PlayerRecorder : MonoBehaviour, ITimeRewindable
 {
     [Header("Recording Settings")]
     [Range(3f, 10f)]
@@ -42,41 +42,69 @@ public class PlayerRecorder : MonoBehaviour
     public PlayerController playerController;
     public Transform gunTransform;
     public SpriteRenderer playerSpriteRenderer;
+    public Health playerHealth;
     
     private Queue<PlayerAction> recordedActions = new Queue<PlayerAction>();
     private float recordingInterval;
     private float lastRecordTime;
     
-    // Track shooting
-    private bool shotThisFrame = false;
-    private Vector2 lastShootDirection;
+    // Track shooting with frame-perfect accuracy
+    private List<ShotRecord> shotsThisFrame = new List<ShotRecord>();
+    
+    [System.Serializable]
+    public class ShotRecord
+    {
+        public Vector2 direction;
+        public float timestamp;
+        
+        public ShotRecord(Vector2 dir, float time)
+        {
+            direction = dir;
+            timestamp = time;
+        }
+    }
+    
+    private string entityId;
     
     void Start()
     {
         recordingInterval = 1f / recordingsPerSecond;
+        entityId = System.Guid.NewGuid().ToString();
         
         if (playerController == null)
             playerController = GetComponent<PlayerController>();
+            
+        if (playerHealth == null)
+            playerHealth = GetComponent<Health>();
+            
+        // Register with TimeManager
+        if (TimeManager.Instance != null)
+        {
+            TimeManager.Instance.RegisterEntity(this);
+        }
     }
     
     void Update()
     {
         RecordPlayerActions();
         
-        if (Input.GetKeyDown(spawnGhostKey))
+        // Clear shots from last frame
+        shotsThisFrame.Clear();
+    }
+    
+    void OnDestroy()
+    {
+        if (TimeManager.Instance != null)
         {
-            SpawnGhost();
+            TimeManager.Instance.UnregisterEntity(this);
         }
-        
-        // Reset shoot tracking
-        shotThisFrame = false;
     }
     
     private void RecordPlayerActions()
     {
         if (Time.time - lastRecordTime >= recordingInterval)
         {
-            // Record current state
+            // Record current state with all shots from this recording interval
             PlayerAction action = new PlayerAction(
                 Time.time,
                 transform.position,
@@ -84,8 +112,8 @@ public class PlayerRecorder : MonoBehaviour
                 gunTransform.eulerAngles,
                 playerSpriteRenderer.flipX,
                 IsPlayerRunning(),
-                shotThisFrame,
-                lastShootDirection
+                shotsThisFrame.Count > 0, // True if any shots this frame
+                shotsThisFrame.Count > 0 ? shotsThisFrame[0].direction : Vector2.zero
             );
             
             recordedActions.Enqueue(action);
@@ -110,11 +138,10 @@ public class PlayerRecorder : MonoBehaviour
     
     public void OnPlayerShoot(Vector2 shootDirection)
     {
-        shotThisFrame = true;
-        lastShootDirection = shootDirection;
+        shotsThisFrame.Add(new ShotRecord(shootDirection, Time.time));
     }
     
-    private void SpawnGhost()
+    public void SpawnGhostFromHistory()
     {
         if (ghostPrefab == null)
         {
@@ -148,5 +175,47 @@ public class PlayerRecorder : MonoBehaviour
     public void NotifyShoot(Vector2 direction)
     {
         OnPlayerShoot(direction);
+    }
+    
+    // ITimeRewindable implementation
+    public string GetEntityId()
+    {
+        return entityId;
+    }
+    
+    public EntitySnapshot TakeSnapshot()
+    {
+        EntitySnapshot snapshot = new EntitySnapshot(
+            entityId,
+            transform.position,
+            transform.rotation,
+            GetComponent<Rigidbody2D>() != null ? GetComponent<Rigidbody2D>().velocity : Vector3.zero,
+            gameObject.activeInHierarchy,
+            playerHealth != null ? playerHealth.GetComponent<Health>().CurrentHealth : 100f
+        );
+        
+        // Add player-specific data
+        snapshot.flipX = playerSpriteRenderer.flipX;
+        snapshot.isRunning = IsPlayerRunning();
+        snapshot.gunRotation = gunTransform.eulerAngles;
+        
+        return snapshot;
+    }
+    
+    public BulletSnapshot TakeBulletSnapshot()
+    {
+        // Players don't implement this - only bullets do
+        return null;
+    }
+    
+    public void RestoreFromSnapshot(EntitySnapshot snapshot)
+    {
+        // Players don't get rewound - only enemies do
+        // The player stays in current time while ghost replays past actions
+    }
+    
+    public bool IsActive()
+    {
+        return gameObject.activeInHierarchy;
     }
 }
