@@ -155,6 +155,56 @@ Transform:
   - {fileID: 1254986501}
   m_Father: {fileID: 928125196}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &420774171
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 420774173}
+  - component: {fileID: 420774172}
+  m_Layer: 0
+  m_Name: TimeManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &420774172
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 420774171}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b8285c04020d8e408878a278eaef507, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rewindDuration: 5
+  snapshotsPerSecond: 30
+  rewindKey: 324
+  ghostPlayerPrefab: {fileID: 3612694641499282806, guid: 8de3163c0c7e2f045a2569c6bc3072fb, type: 3}
+  playerBulletPrefab: {fileID: 2300189211221088423, guid: e763d734a35483d4e901c2affcacd741, type: 3}
+  enemyBulletPrefab: {fileID: 2300189211221088423, guid: 25745d248c0da454ca2f44493e502833, type: 3}
+--- !u!4 &420774173
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 420774171}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.49993533, y: 0.9583193, z: 2.6631382}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &616332945
 GameObject:
   m_ObjectHideFlags: 0
@@ -263,6 +313,8 @@ MonoBehaviour:
   snapshotsPerSecond: 30
   rewindKey: 324
   ghostPlayerPrefab: {fileID: 3612694641499282806, guid: 8de3163c0c7e2f045a2569c6bc3072fb, type: 3}
+  playerBulletPrefab: {fileID: 0}
+  enemyBulletPrefab: {fileID: 0}
 --- !u!4 &651684464
 Transform:
   m_ObjectHideFlags: 0
@@ -1842,3 +1894,4 @@ SceneRoots:
   - {fileID: 1197560793}
   - {fileID: 867855262}
   - {fileID: 651684464}
+  - {fileID: 420774173}

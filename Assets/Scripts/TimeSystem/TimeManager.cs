@@ -2,74 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[System.Serializable]
-public class GameStateSnapshot
-{
-    public float timestamp;
-    public List<EntitySnapshot> entities = new List<EntitySnapshot>();
-    public List<BulletSnapshot> bullets = new List<BulletSnapshot>();
-    
-    public GameStateSnapshot(float time)
-    {
-        timestamp = time;
-    }
-}
-
-[System.Serializable]
-public class EntitySnapshot
-{
-    public string entityId;
-    public Vector3 position;
-    public Quaternion rotation;
-    public Vector3 velocity;
-    public bool isActive;
-    public float health;
-    
-    // Player specific
-    public bool flipX;
-    public bool isRunning;
-    public Vector3 gunRotation;
-    
-    // Enemy specific
-    public Transform currentTarget;
-    public float shootTimer;
-    
-    public EntitySnapshot(string id, Vector3 pos, Quaternion rot, Vector3 vel, bool active, float hp)
-    {
-        entityId = id;
-        position = pos;
-        rotation = rot;
-        velocity = vel;
-        isActive = active;
-        health = hp;
-    }
-}
-
-[System.Serializable]
-public class BulletSnapshot
-{
-    public string bulletId;
-    public Vector3 position;
-    public Vector2 direction;
-    public float speed;
-    public float damage;
-    public float remainingLifetime;
-    public bool isPlayerBullet;
-    public string ownerType; // "Player", "Ghost", "Enemy"
-    
-    public BulletSnapshot(string id, Vector3 pos, Vector2 dir, float spd, float dmg, float lifetime, bool isPlayer, string owner)
-    {
-        bulletId = id;
-        position = pos;
-        direction = dir;
-        speed = spd;
-        damage = dmg;
-        remainingLifetime = lifetime;
-        isPlayerBullet = isPlayer;
-        ownerType = owner;
-    }
-}
-
 public class TimeManager : MonoBehaviour
 {
     public static TimeManager Instance;
@@ -84,12 +16,15 @@ public class TimeManager : MonoBehaviour
     public KeyCode rewindKey = KeyCode.Mouse1;
     public GameObject ghostPlayerPrefab;
     
+    [Header("Bullet Prefabs - Assign These!")]
+    public GameObject playerBulletPrefab;
+    public GameObject enemyBulletPrefab;
+    
     private Queue<GameStateSnapshot> gameHistory = new Queue<GameStateSnapshot>();
     private float snapshotInterval;
     private float lastSnapshotTime;
     private bool isRewinding = false;
     
-    // Track all entities that need rewinding
     private List<ITimeRewindable> rewindableEntities = new List<ITimeRewindable>();
     private List<ITimeRewindable> rewindableBullets = new List<ITimeRewindable>();
     
@@ -109,6 +44,29 @@ public class TimeManager : MonoBehaviour
     void Start()
     {
         snapshotInterval = 1f / snapshotsPerSecond;
+        
+        // Auto-assign bullet prefabs if not set
+        if (playerBulletPrefab == null)
+        {
+            GameObject player = GameObject.FindGameObjectWithTag("Player");
+            if (player != null)
+            {
+                PlayerController playerController = player.GetComponent<PlayerController>();
+                if (playerController != null)
+                {
+                    playerBulletPrefab = playerController.bulletPrefab;
+                }
+            }
+        }
+        
+        if (enemyBulletPrefab == null)
+        {
+            RewindableEnemyController enemy = FindObjectOfType<RewindableEnemyController>();
+            if (enemy != null)
+            {
+                enemyBulletPrefab = enemy.bulletPrefab;
+            }
+        }
     }
     
     void Update()
@@ -130,12 +88,16 @@ public class TimeManager : MonoBehaviour
         {
             GameStateSnapshot snapshot = new GameStateSnapshot(Time.time);
             
-            // Record all entities
+            // Record all entities (including enemies)
             foreach (var entity in rewindableEntities)
             {
                 if (entity != null && entity.IsActive())
                 {
-                    snapshot.entities.Add(entity.TakeSnapshot());
+                    EntitySnapshot entitySnapshot = entity.TakeSnapshot();
+                    if (entitySnapshot != null)
+                    {
+                        snapshot.entities.Add(entitySnapshot);
+                    }
                 }
             }
             
@@ -144,7 +106,11 @@ public class TimeManager : MonoBehaviour
             {
                 if (bullet != null && bullet.IsActive())
                 {
-                    snapshot.bullets.Add(bullet.TakeBulletSnapshot());
+                    BulletSnapshot bulletSnapshot = bullet.TakeBulletSnapshot();
+                    if (bulletSnapshot != null)
+                    {
+                        snapshot.bullets.Add(bulletSnapshot);
+                    }
                 }
             }
             
@@ -164,6 +130,7 @@ public class TimeManager : MonoBehaviour
     {
         if (gameHistory.Count == 0) return;
         
+        Debug.Log("Starting rewind...");
         isRewinding = true;
         
         // Get the oldest snapshot (rewindDuration seconds ago)
@@ -176,10 +143,12 @@ public class TimeManager : MonoBehaviour
         
         if (oldestSnapshot != null)
         {
-            // Spawn ghost player
+            Debug.Log($"Rewinding to snapshot with {oldestSnapshot.entities.Count} entities and {oldestSnapshot.bullets.Count} bullets");
+            
+            // Spawn ghost player FIRST
             SpawnGhostPlayer();
             
-            // Rewind all entities to their past states
+            // Rewind all entities (including enemies) to their past states
             RewindEntities(oldestSnapshot);
             
             // Recreate all bullets from that time
@@ -191,9 +160,12 @@ public class TimeManager : MonoBehaviour
     
     private void SpawnGhostPlayer()
     {
-        if (ghostPlayerPrefab == null) return;
+        if (ghostPlayerPrefab == null) 
+        {
+            Debug.LogWarning("Ghost player prefab not assigned!");
+            return;
+        }
         
-        // Create ghost with recorded actions (same as before)
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player != null)
         {
@@ -201,21 +173,47 @@ public class TimeManager : MonoBehaviour
             if (recorder != null)
             {
                 recorder.SpawnGhostFromHistory();
+                Debug.Log("Ghost player spawned");
             }
+            else
+            {
+                Debug.LogError("Player doesn't have PlayerRecorder component!");
+            }
+        }
+        else
+        {
+            Debug.LogError("No player found with 'Player' tag!");
         }
     }
     
     private void RewindEntities(GameStateSnapshot snapshot)
     {
+        int rewindedEntities = 0;
+        
         foreach (var entitySnapshot in snapshot.entities)
         {
             // Find the corresponding entity
             ITimeRewindable entity = FindEntityById(entitySnapshot.entityId);
             if (entity != null)
             {
+                // Skip player - only rewind enemies
+                if (entity.GetType() == typeof(PlayerController) || 
+                    entity.GetType() == typeof(PlayerRecorder))
+                {
+                    continue; // Don't rewind the player
+                }
+                
                 entity.RestoreFromSnapshot(entitySnapshot);
+                rewindedEntities++;
+                Debug.Log($"Rewound entity: {entity.GetType().Name}");
+            }
+            else
+            {
+                Debug.LogWarning($"Could not find entity with ID: {entitySnapshot.entityId}");
             }
         }
+        
+        Debug.Log($"Rewound {rewindedEntities} entities");
     }
     
     private void RecreateBullets(GameStateSnapshot snapshot)
@@ -224,10 +222,16 @@ public class TimeManager : MonoBehaviour
         DestroyAllCurrentBullets();
         
         // Then recreate bullets from snapshot
+        int recreatedBullets = 0;
         foreach (var bulletSnapshot in snapshot.bullets)
         {
-            RecreateBulletFromSnapshot(bulletSnapshot);
+            if (RecreateBulletFromSnapshot(bulletSnapshot))
+            {
+                recreatedBullets++;
+            }
         }
+        
+        Debug.Log($"Recreated {recreatedBullets} bullets");
     }
     
     private void DestroyAllCurrentBullets()
@@ -245,59 +249,60 @@ public class TimeManager : MonoBehaviour
         {
             Destroy(bullet);
         }
+        
+        // Also destroy ghost bullets
+        GameObject[] ghostBullets = GameObject.FindGameObjectsWithTag("GhostBullet");
+        foreach (var bullet in ghostBullets)
+        {
+            Destroy(bullet);
+        }
     }
     
-    private void RecreateBulletFromSnapshot(BulletSnapshot snapshot)
+    private bool RecreateBulletFromSnapshot(BulletSnapshot snapshot)
     {
         GameObject bulletPrefab = null;
         
         // Get the appropriate bullet prefab
         if (snapshot.isPlayerBullet)
         {
-            // Get player bullet prefab (you'll need to assign this)
-            GameObject player = GameObject.FindGameObjectWithTag("Player");
-            if (player != null)
+            bulletPrefab = playerBulletPrefab;
+        }
+        else
+        {
+            bulletPrefab = enemyBulletPrefab;
+        }
+        
+        if (bulletPrefab == null)
+        {
+            Debug.LogWarning($"No bullet prefab assigned for {(snapshot.isPlayerBullet ? "player" : "enemy")} bullets!");
+            return false;
+        }
+        
+        GameObject recreatedBullet = Instantiate(bulletPrefab, snapshot.position, Quaternion.identity);
+        
+        // Configure the bullet
+        if (snapshot.isPlayerBullet)
+        {
+            RewindablePlayerBullet playerBullet = recreatedBullet.GetComponent<RewindablePlayerBullet>();
+            if (playerBullet != null)
             {
-                PlayerController playerController = player.GetComponent<PlayerController>();
-                if (playerController != null)
-                {
-                    bulletPrefab = playerController.bulletPrefab;
-                }
+                playerBullet.InitializeFromSnapshot(snapshot);
+                return true;
             }
         }
         else
         {
-            // Get enemy bullet prefab (you'll need to find a way to access this)
-            // For now, we'll try to find an enemy and get its bullet prefab
-            EnemyController enemy = FindObjectOfType<EnemyController>();
-            if (enemy != null)
+            RewindableEnemyBullet enemyBullet = recreatedBullet.GetComponent<RewindableEnemyBullet>();
+            if (enemyBullet != null)
             {
-                bulletPrefab = enemy.bulletPrefab;
+                enemyBullet.InitializeFromSnapshot(snapshot);
+                return true;
             }
         }
         
-        if (bulletPrefab != null)
-        {
-            GameObject recreatedBullet = Instantiate(bulletPrefab, snapshot.position, Quaternion.identity);
-            
-            // Configure the bullet
-            if (snapshot.isPlayerBullet)
-            {
-                RewindablePlayerBullet playerBullet = recreatedBullet.GetComponent<RewindablePlayerBullet>();
-                if (playerBullet != null)
-                {
-                    playerBullet.InitializeFromSnapshot(snapshot);
-                }
-            }
-            else
-            {
-                RewindableEnemyBullet enemyBullet = recreatedBullet.GetComponent<RewindableEnemyBullet>();
-                if (enemyBullet != null)
-                {
-                    enemyBullet.InitializeFromSnapshot(snapshot);
-                }
-            }
-        }
+        // If we get here, something went wrong
+        Destroy(recreatedBullet);
+        return false;
     }
     
     private ITimeRewindable FindEntityById(string id)
@@ -317,6 +322,7 @@ public class TimeManager : MonoBehaviour
         if (!rewindableEntities.Contains(entity))
         {
             rewindableEntities.Add(entity);
+            Debug.Log($"Registered entity: {entity.GetType().Name}");
         }
     }
     

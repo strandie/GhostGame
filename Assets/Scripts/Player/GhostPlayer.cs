@@ -5,28 +5,28 @@ using UnityEngine;
 public class GhostPlayer : MonoBehaviour
 {
     [Header("Ghost Settings")]
-    public float playbackSpeed = 1f; // Speed multiplier for replay
-    public Color ghostColor = new Color(1f, 1f, 1f, 0.5f); // Semi-transparent
+    public float playbackSpeed = 1f;
+    public Color ghostColor = new Color(1f, 1f, 1f, 0.5f);
     
     [Header("Combat Settings")]
     public bool canTakeDamage = true;
     public bool canDealDamage = true;
-    public float ghostHealth = 100f; // Same as player or different
-    public LayerMask enemyLayers = -1; // What layers this ghost can damage
+    public float ghostHealth = 100f;
+    public LayerMask enemyLayers = -1;
     
     [Header("References")]
     public SpriteRenderer ghostSpriteRenderer;
     public SpriteRenderer ghostGunSpriteRenderer;
     public Transform ghostGunTransform;
     public Transform ghostFirePoint;
-    public GameObject ghostBulletPrefab; // Use same bullet prefab as player
+    public GameObject ghostBulletPrefab;
     public Animator ghostAnimator;
-    public DamageFlash damageFlash; // For damage feedback
-    public Collider2D ghostCollider; // For taking damage
+    public DamageFlash damageFlash;
+    public Collider2D ghostCollider;
     
     [Header("Auto Destroy")]
     public bool autoDestroy = true;
-    public float destroyDelay = 1f; // Extra time after replay finishes
+    public float destroyDelay = 1f;
     
     private List<PlayerAction> actionsToReplay;
     private int currentActionIndex = 0;
@@ -34,11 +34,13 @@ public class GhostPlayer : MonoBehaviour
     private bool isReplaying = false;
     private float currentHealth;
     
+    // Track which shots have been executed
+    private HashSet<float> executedShotTimestamps = new HashSet<float>();
+    
     void Start()
     {
         currentHealth = ghostHealth;
         
-        // Make ghost semi-transparent but keep it visible
         if (ghostSpriteRenderer != null)
         {
             ghostSpriteRenderer.color = ghostColor;
@@ -49,7 +51,6 @@ public class GhostPlayer : MonoBehaviour
             ghostGunSpriteRenderer.color = ghostColor;
         }
         
-        // Ensure collider is enabled for damage
         if (ghostCollider == null)
             ghostCollider = GetComponent<Collider2D>();
             
@@ -66,7 +67,6 @@ public class GhostPlayer : MonoBehaviour
             replayStartTime = Time.time;
             isReplaying = true;
             
-            // Set initial position to first recorded action
             PlayerAction firstAction = actionsToReplay[0];
             transform.position = firstAction.position;
             transform.rotation = firstAction.rotation;
@@ -91,7 +91,6 @@ public class GhostPlayer : MonoBehaviour
     {
         if (currentActionIndex >= actionsToReplay.Count)
         {
-            // Replay finished
             isReplaying = false;
             
             if (autoDestroy)
@@ -103,17 +102,18 @@ public class GhostPlayer : MonoBehaviour
 
         PlayerAction currentAction = actionsToReplay[currentActionIndex];
         
-        // Calculate the time this action should be played based on the original timestamp
         float originalActionTime = currentAction.timestamp - actionsToReplay[0].timestamp;
         float targetPlayTime = originalActionTime / playbackSpeed;
         float currentPlayTime = Time.time - replayStartTime;
         
-        // Check if it's time to execute this action
         if (currentPlayTime >= targetPlayTime)
         {
             ExecuteAction(currentAction);
             currentActionIndex++;
         }
+        
+        // Execute any shots that should happen now from ANY action
+        ExecuteShotsAtCurrentTime(currentPlayTime);
         
         // Interpolate position between actions for smooth movement
         if (currentActionIndex < actionsToReplay.Count)
@@ -126,47 +126,58 @@ public class GhostPlayer : MonoBehaviour
                 float lerpFactor = (currentPlayTime - targetPlayTime) / (nextActionTime - targetPlayTime);
                 lerpFactor = Mathf.Clamp01(lerpFactor);
                 
-                // Smooth position interpolation
                 transform.position = Vector3.Lerp(currentAction.position, nextAction.position, lerpFactor);
+            }
+        }
+    }
+    
+    private void ExecuteShotsAtCurrentTime(float currentPlayTime)
+    {
+        // Check all actions for shots that should happen now
+        foreach (var action in actionsToReplay)
+        {
+            if (action.shots == null) continue;
+            
+            foreach (var shot in action.shots)
+            {
+                float shotTime = (shot.timestamp - actionsToReplay[0].timestamp) / playbackSpeed;
+                
+                // If it's time for this shot and we haven't executed it yet
+                if (currentPlayTime >= shotTime && !executedShotTimestamps.Contains(shot.timestamp))
+                {
+                    GhostShoot(shot.direction);
+                    executedShotTimestamps.Add(shot.timestamp);
+                }
             }
         }
     }
     
     private void ExecuteAction(PlayerAction action)
     {
-        // Set position and rotation
         transform.position = action.position;
         transform.rotation = action.rotation;
         
-        // Set gun rotation
         if (ghostGunTransform != null)
         {
             ghostGunTransform.eulerAngles = action.gunRotation;
         }
         
-        // Set sprite flip
         if (ghostSpriteRenderer != null)
         {
             ghostSpriteRenderer.flipX = action.flipX;
         }
         
-        // Set gun sprite flip
         if (ghostGunSpriteRenderer != null)
         {
             ghostGunSpriteRenderer.flipY = action.flipX;
         }
         
-        // Handle animation
         if (ghostAnimator != null)
         {
             ghostAnimator.SetBool("IsRunning", action.isRunning);
         }
         
-        // Handle shooting
-        if (action.shouldShoot)
-        {
-            GhostShoot(action.shootDirection);
-        }
+        // Note: Shots are now handled separately in ExecuteShotsAtCurrentTime
     }
     
     private void GhostShoot(Vector2 direction)
@@ -177,34 +188,29 @@ public class GhostPlayer : MonoBehaviour
         Vector2 spawnPos = (Vector2)ghostFirePoint.position + direction * 0.2f;
         GameObject bullet = Instantiate(ghostBulletPrefab, spawnPos, Quaternion.identity);
         
-        // Initialize bullet with same damage as player
-        PlayerBullet bulletScript = bullet.GetComponent<PlayerBullet>();
+        RewindablePlayerBullet bulletScript = bullet.GetComponent<RewindablePlayerBullet>();
         if (bulletScript != null)
         {
             bulletScript.Initialize(direction);
-            
-            // Optional: Tag ghost bullets differently if needed
-            bullet.tag = "GhostBullet"; // You can create this tag
+            bullet.tag = "GhostBullet";
         }
         
-        // Optional: Make ghost bullets slightly more transparent
+        // Make ghost bullets slightly more transparent
         SpriteRenderer bulletRenderer = bullet.GetComponent<SpriteRenderer>();
         if (bulletRenderer != null)
         {
             Color bulletColor = bulletRenderer.color;
-            bulletColor.a *= 0.8f; // Make bullets slightly more transparent
+            bulletColor.a *= 0.8f;
             bulletRenderer.color = bulletColor;
         }
     }
     
-    // Method to take damage - call this from your damage system
     public void TakeDamage(float damage)
     {
         if (!canTakeDamage) return;
         
         currentHealth -= damage;
         
-        // Flash effect when taking damage
         if (damageFlash != null)
         {
             damageFlash.Flash();
@@ -212,7 +218,6 @@ public class GhostPlayer : MonoBehaviour
         
         Debug.Log($"Ghost took {damage} damage! Health: {currentHealth}");
         
-        // Check if ghost should die
         if (currentHealth <= 0)
         {
             Die();
@@ -221,28 +226,20 @@ public class GhostPlayer : MonoBehaviour
     
     private void Die()
     {
-        // Stop replaying
         isReplaying = false;
-        
-        // Optional: Death effect here (particles, sound, etc.)
-        
-        // Destroy the ghost
         Destroy(gameObject);
     }
     
-    // Method to check if ghost can damage a target
     public bool CanDamage(GameObject target)
     {
         if (!canDealDamage) return false;
         
-        // Check if target is on a layer this ghost can damage
         int targetLayer = target.layer;
         return (enemyLayers.value & (1 << targetLayer)) > 0;
     }
     
-    // Optional: Visual effect when ghost spawns
     void OnEnable()
     {
-        // You could add a spawn effect here
+        // Spawn effect could go here
     }
 }

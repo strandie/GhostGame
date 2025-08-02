@@ -10,10 +10,9 @@ public class PlayerAction
     public Vector3 gunRotation;
     public bool flipX;
     public bool isRunning;
-    public bool shouldShoot;
-    public Vector2 shootDirection;
+    public List<ShotRecord> shots; // Changed to support multiple shots
     
-    public PlayerAction(float time, Vector3 pos, Quaternion rot, Vector3 gunRot, bool flip, bool running, bool shoot, Vector2 shootDir)
+    public PlayerAction(float time, Vector3 pos, Quaternion rot, Vector3 gunRot, bool flip, bool running, List<ShotRecord> shotList)
     {
         timestamp = time;
         position = pos;
@@ -21,8 +20,7 @@ public class PlayerAction
         gunRotation = gunRot;
         flipX = flip;
         isRunning = running;
-        shouldShoot = shoot;
-        shootDirection = shootDir;
+        shots = new List<ShotRecord>(shotList); // Copy the list
     }
 }
 
@@ -30,13 +28,13 @@ public class PlayerRecorder : MonoBehaviour, ITimeRewindable
 {
     [Header("Recording Settings")]
     [Range(3f, 10f)]
-    public float recordingDuration = 5f; // How many seconds to remember
+    public float recordingDuration = 5f;
     [Range(10, 60)]
-    public int recordingsPerSecond = 30; // Recording frequency
+    public int recordingsPerSecond = 30;
     
     [Header("Ghost Settings")]
-    public GameObject ghostPrefab; // The ghost player prefab
-    public KeyCode spawnGhostKey = KeyCode.Mouse1; // Right click
+    public GameObject ghostPrefab;
+    public KeyCode spawnGhostKey = KeyCode.Mouse1;
     
     [Header("References")]
     public PlayerController playerController;
@@ -48,21 +46,8 @@ public class PlayerRecorder : MonoBehaviour, ITimeRewindable
     private float recordingInterval;
     private float lastRecordTime;
     
-    // Track shooting with frame-perfect accuracy
-    private List<ShotRecord> shotsThisFrame = new List<ShotRecord>();
-    
-    [System.Serializable]
-    public class ShotRecord
-    {
-        public Vector2 direction;
-        public float timestamp;
-        
-        public ShotRecord(Vector2 dir, float time)
-        {
-            direction = dir;
-            timestamp = time;
-        }
-    }
+    // Track all shots since last recording
+    private List<ShotRecord> shotsSinceLastRecord = new List<ShotRecord>();
     
     private string entityId;
     
@@ -87,9 +72,6 @@ public class PlayerRecorder : MonoBehaviour, ITimeRewindable
     void Update()
     {
         RecordPlayerActions();
-        
-        // Clear shots from last frame
-        shotsThisFrame.Clear();
     }
     
     void OnDestroy()
@@ -104,7 +86,7 @@ public class PlayerRecorder : MonoBehaviour, ITimeRewindable
     {
         if (Time.time - lastRecordTime >= recordingInterval)
         {
-            // Record current state with all shots from this recording interval
+            // Record current state with ALL shots since last recording
             PlayerAction action = new PlayerAction(
                 Time.time,
                 transform.position,
@@ -112,12 +94,14 @@ public class PlayerRecorder : MonoBehaviour, ITimeRewindable
                 gunTransform.eulerAngles,
                 playerSpriteRenderer.flipX,
                 IsPlayerRunning(),
-                shotsThisFrame.Count > 0, // True if any shots this frame
-                shotsThisFrame.Count > 0 ? shotsThisFrame[0].direction : Vector2.zero
+                shotsSinceLastRecord // Pass all shots
             );
             
             recordedActions.Enqueue(action);
             lastRecordTime = Time.time;
+            
+            // Clear shots for next interval
+            shotsSinceLastRecord.Clear();
             
             // Remove old actions beyond our recording duration
             while (recordedActions.Count > 0 && 
@@ -130,7 +114,6 @@ public class PlayerRecorder : MonoBehaviour, ITimeRewindable
     
     private bool IsPlayerRunning()
     {
-        // Get movement input to determine if running
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
         return (horizontal * horizontal + vertical * vertical) > 0.01f;
@@ -138,7 +121,7 @@ public class PlayerRecorder : MonoBehaviour, ITimeRewindable
     
     public void OnPlayerShoot(Vector2 shootDirection)
     {
-        shotsThisFrame.Add(new ShotRecord(shootDirection, Time.time));
+        shotsSinceLastRecord.Add(new ShotRecord(shootDirection, Time.time));
     }
     
     public void SpawnGhostFromHistory()
@@ -155,7 +138,6 @@ public class PlayerRecorder : MonoBehaviour, ITimeRewindable
             return;
         }
         
-        // Create a copy of the recorded actions for the ghost
         List<PlayerAction> actionsToReplay = new List<PlayerAction>(recordedActions);
         
         GameObject ghost = Instantiate(ghostPrefab, transform.position, transform.rotation);
@@ -171,7 +153,6 @@ public class PlayerRecorder : MonoBehaviour, ITimeRewindable
         }
     }
     
-    // Call this method from your PlayerController's Shoot method
     public void NotifyShoot(Vector2 direction)
     {
         OnPlayerShoot(direction);
@@ -194,7 +175,6 @@ public class PlayerRecorder : MonoBehaviour, ITimeRewindable
             playerHealth != null ? playerHealth.GetComponent<Health>().CurrentHealth : 100f
         );
         
-        // Add player-specific data
         snapshot.flipX = playerSpriteRenderer.flipX;
         snapshot.isRunning = IsPlayerRunning();
         snapshot.gunRotation = gunTransform.eulerAngles;
@@ -204,14 +184,12 @@ public class PlayerRecorder : MonoBehaviour, ITimeRewindable
     
     public BulletSnapshot TakeBulletSnapshot()
     {
-        // Players don't implement this - only bullets do
         return null;
     }
     
     public void RestoreFromSnapshot(EntitySnapshot snapshot)
     {
         // Players don't get rewound - only enemies do
-        // The player stays in current time while ghost replays past actions
     }
     
     public bool IsActive()
