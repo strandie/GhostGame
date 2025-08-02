@@ -4,19 +4,38 @@ using UnityEngine;
 
 public class EnemySpawner : MonoBehaviour
 {
-    public GameObject enemyPrefab; // assign your enemy prefab here
+    public GameObject enemyPrefab;
     public int spawnCount = 2;
-    public float spawnRadius = 5f;
 
-    void Start()
+    private bool[,] walkable;
+    private int mapWidth, mapHeight;
+    private Vector2Int worldOffset;
+
+    public void SpawnEnemies(bool[,] walkableMap, int mapWidth, int mapHeight, Vector2Int offset)
     {
-        for (int i = 0; i < spawnCount; i++)
+        this.walkable = walkableMap;
+        this.mapWidth = mapWidth;
+        this.mapHeight = mapHeight;
+        this.worldOffset = offset;
+
+        int attempts = 0;
+        int spawned = 0;
+
+        while (spawned < spawnCount && attempts < 1000)
         {
-            Debug.Log("here");
-            Vector3 spawnPos = transform.position + Random.insideUnitSphere * spawnRadius;
-            spawnPos.z = 0; // for 2D top-down games
-            SpawnEnemy(spawnPos);
+            attempts++;
+            int x = Random.Range(0, mapWidth);
+            int y = Random.Range(0, mapHeight);
+
+            if (walkable[x, y])
+            {
+                Vector3 spawnPos = new Vector3(x + worldOffset.x + 0.5f, y + worldOffset.y + 0.5f, 0);
+                SpawnEnemy(spawnPos);
+                spawned++;
+            }
         }
+
+        Debug.Log($"Spawned {spawned} enemies.");
     }
 
     void SpawnEnemy(Vector3 position)
@@ -33,4 +52,3 @@ public class EnemySpawner : MonoBehaviour
         }
     }
 }
-
