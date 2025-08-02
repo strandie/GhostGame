@@ -250,7 +250,7 @@ MonoBehaviour:
   ghostGunSpriteRenderer: {fileID: 3366590662629788635}
   ghostGunTransform: {fileID: 795547754492263719}
   ghostFirePoint: {fileID: 2622196235602842129}
-  ghostBulletPrefab: {fileID: 2300189211221088423, guid: e763d734a35483d4e901c2affcacd741, type: 3}
+  ghostBulletPrefab: {fileID: 2300189211221088423, guid: 16fac738c264fa14e86eff51dc6bc8af, type: 3}
   ghostAnimator: {fileID: 7226366208172170058}
   damageFlash: {fileID: 6233749500398389666}
   ghostCollider: {fileID: 5803278357516729249}
