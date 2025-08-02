@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 8781281260836951659}
   - component: {fileID: 7576591008873932586}
   - component: {fileID: 4241912052238608299}
+  - component: {fileID: 7794999614187392179}
   m_Layer: 7
   m_Name: Enemy
   m_TagString: Enemy
@@ -104,6 +105,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxHealth: 100
   currentHealth: 0
+  allowDestruction: 1
   onHealthChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -218,6 +220,20 @@ MonoBehaviour:
   bulletPrefab: {fileID: 2300189211221088423, guid: 25745d248c0da454ca2f44493e502833, type: 3}
   firePoint: {fileID: 6179216794817982578}
   shootCooldown: 0.5
+--- !u!114 &7794999614187392179
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5485169054191972450}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b94ce050bfe7d04daaf8eb248b8a541, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  useDeactivation: 1
+  destroyDelay: 5
 --- !u!1 &7828360250075455478
 GameObject:
   m_ObjectHideFlags: 0

@@ -16,6 +16,10 @@ public class TimeManager : MonoBehaviour
     public KeyCode rewindKey = KeyCode.Mouse1;
     public GameObject ghostPlayerPrefab;
     
+    [Header("Cooldown Settings")]
+    public float rewindCooldown = 10f;
+    private float lastRewindTime = -10f; // Allow immediate first use
+    
     [Header("Bullet Prefabs - Assign These!")]
     public GameObject playerBulletPrefab;
     public GameObject enemyBulletPrefab;
@@ -77,8 +81,39 @@ public class TimeManager : MonoBehaviour
             
             if (Input.GetKeyDown(rewindKey))
             {
-                StartRewind();
+                TryStartRewind();
             }
+        }
+        
+        // Update UI cooldown
+        UpdateRewindUI();
+    }
+    
+    public void TryStartRewind()
+    {
+        float timeSinceLastRewind = Time.time - lastRewindTime;
+        
+        if (timeSinceLastRewind >= rewindCooldown)
+        {
+            StartRewind();
+            lastRewindTime = Time.time;
+        }
+        else
+        {
+            float remainingCooldown = rewindCooldown - timeSinceLastRewind;
+            Debug.Log($"Rewind on cooldown! {remainingCooldown:F1} seconds remaining");
+        }
+    }
+    
+    private void UpdateRewindUI()
+    {
+        if (RewindUI.Instance != null)
+        {
+            float timeSinceLastRewind = Time.time - lastRewindTime;
+            float remainingCooldown = Mathf.Max(0, rewindCooldown - timeSinceLastRewind);
+            bool isOnCooldown = remainingCooldown > 0;
+            
+            RewindUI.Instance.UpdateCooldown(remainingCooldown, rewindCooldown, isOnCooldown);
         }
     }
     
@@ -88,29 +123,66 @@ public class TimeManager : MonoBehaviour
         {
             GameStateSnapshot snapshot = new GameStateSnapshot(Time.time);
             
-            // Record all entities (including enemies)
-            foreach (var entity in rewindableEntities)
+            // Record all entities (including enemies) - with null checking
+            for (int i = rewindableEntities.Count - 1; i >= 0; i--)
             {
-                if (entity != null && entity.IsActive())
+                var entity = rewindableEntities[i];
+                
+                // Remove null references
+                if (entity == null)
                 {
-                    EntitySnapshot entitySnapshot = entity.TakeSnapshot();
-                    if (entitySnapshot != null)
+                    rewindableEntities.RemoveAt(i);
+                    continue;
+                }
+                
+                // Check if entity is still valid and active
+                try
+                {
+                    if (entity.IsActive())
                     {
-                        snapshot.entities.Add(entitySnapshot);
+                        EntitySnapshot entitySnapshot = entity.TakeSnapshot();
+                        if (entitySnapshot != null)
+                        {
+                            snapshot.entities.Add(entitySnapshot);
+                        }
                     }
+                }
+                catch (MissingReferenceException)
+                {
+                    // Entity was destroyed, remove it from the list
+                    rewindableEntities.RemoveAt(i);
+                    continue;
                 }
             }
             
-            // Record all bullets
-            foreach (var bullet in rewindableBullets)
+            // Record all bullets - with null checking
+            for (int i = rewindableBullets.Count - 1; i >= 0; i--)
             {
-                if (bullet != null && bullet.IsActive())
+                var bullet = rewindableBullets[i];
+                
+                // Remove null references
+                if (bullet == null)
                 {
-                    BulletSnapshot bulletSnapshot = bullet.TakeBulletSnapshot();
-                    if (bulletSnapshot != null)
+                    rewindableBullets.RemoveAt(i);
+                    continue;
+                }
+                
+                try
+                {
+                    if (bullet.IsActive())
                     {
-                        snapshot.bullets.Add(bulletSnapshot);
+                        BulletSnapshot bulletSnapshot = bullet.TakeBulletSnapshot();
+                        if (bulletSnapshot != null)
+                        {
+                            snapshot.bullets.Add(bulletSnapshot);
+                        }
                     }
+                }
+                catch (MissingReferenceException)
+                {
+                    // Bullet was destroyed, remove it from the list
+                    rewindableBullets.RemoveAt(i);
+                    continue;
                 }
             }
             
@@ -209,11 +281,39 @@ public class TimeManager : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning($"Could not find entity with ID: {entitySnapshot.entityId}");
+                // Entity might be dead - try to revive it
+                ReviveDeadEntity(entitySnapshot);
             }
         }
         
         Debug.Log($"Rewound {rewindedEntities} entities");
+    }
+    
+    private void ReviveDeadEntity(EntitySnapshot snapshot)
+    {
+        // Look for dead enemies to revive
+        if (snapshot.entityId.Contains("Enemy") || snapshot.health > 0)
+        {
+            // Try to find a dead enemy controller in the scene
+            RewindableEnemyController[] allEnemies = FindObjectsOfType<RewindableEnemyController>(true); // Include inactive
+            
+            foreach (var enemy in allEnemies)
+            {
+                if (enemy.GetEntityId() == snapshot.entityId)
+                {
+                    // Found the dead enemy - revive it
+                    enemy.gameObject.SetActive(true);
+                    enemy.RestoreFromSnapshot(snapshot);
+                    Debug.Log($"Revived dead enemy: {enemy.name}");
+                    return;
+                }
+            }
+            
+            // If we can't find the enemy, it might have been destroyed
+            // In that case, we'd need to recreate it from a prefab
+            // This would require storing enemy prefab references
+            Debug.LogWarning($"Could not revive entity with ID: {snapshot.entityId}");
+        }
     }
     
     private void RecreateBullets(GameStateSnapshot snapshot)
@@ -328,7 +428,9 @@ public class TimeManager : MonoBehaviour
     
     public void UnregisterEntity(ITimeRewindable entity)
     {
+        // Remove from list when entity is destroyed
         rewindableEntities.Remove(entity);
+        Debug.Log($"Entity unregistered: {entity?.GetType().Name}");
     }
     
     public void RegisterBullet(ITimeRewindable bullet)

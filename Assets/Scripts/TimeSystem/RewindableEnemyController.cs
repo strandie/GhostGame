@@ -37,6 +37,8 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
 
     private static List<Transform> allPlayers = new();
 
+    private EnemyDeathHandler deathHandler;
+
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -56,6 +58,12 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
 
         wanderTimer = wanderChangeInterval;
         wanderDirection = GetRandomDirection();
+
+        deathHandler = GetComponent<EnemyDeathHandler>();
+        if (deathHandler == null)
+        {
+            deathHandler = gameObject.AddComponent<EnemyDeathHandler>();
+        }
     }
 
     void Update()
@@ -286,6 +294,11 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
 
     public void RestoreFromSnapshot(EntitySnapshot snapshot)
     {
+        if (deathHandler != null && deathHandler.IsDead() && snapshot.health > 0)
+        {
+            deathHandler.Revive();
+        }
+
         transform.position = snapshot.position;
         transform.rotation = snapshot.rotation;
         rb.velocity = snapshot.velocity;
@@ -298,5 +311,13 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
         gameObject.SetActive(snapshot.isActive);
     }
 
-    public bool IsActive() => gameObject.activeInHierarchy;
+    //public bool IsActive() => gameObject.activeInHierarchy;
+    public bool IsActive() 
+    { 
+        // Consider enemy inactive if dead, even if GameObject is still active
+        if (deathHandler != null && deathHandler.IsDead())
+            return false;
+            
+        return gameObject.activeInHierarchy;
+    }
 }
