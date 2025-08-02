@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Tilemaps;
 
 public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
 {
@@ -8,8 +9,21 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
     private Health enemyHealth;
     private string entityId;
 
+    [Header("Tilemap")]
+    public Tilemap collisionTilemap;
+
     [Header("Movement")]
     public float moveSpeed = 1f;
+    public float wanderChangeInterval = 2f;
+    private float wanderTimer;
+    private Vector2 wanderDirection;
+
+    [Header("Chase Behavior")]
+    public float visionRange = 10f;
+    public float chasePauseInterval = 2f;
+    public float chasePauseDuration = 0.5f;
+    private float chasePauseTimer;
+    private bool isChasePaused;
 
     [Header("Shooting")]
     public GameObject bulletPrefab;
@@ -28,65 +42,155 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
         rb = GetComponent<Rigidbody2D>();
         enemyHealth = GetComponent<Health>();
         entityId = System.Guid.NewGuid().ToString();
-        
-        UpdatePlayerList();
-        
-        // Register with TimeManager
-        if (TimeManager.Instance != null)
+
+        GameObject tilemapObj = GameObject.FindGameObjectWithTag("Terrain");
+        if (tilemapObj != null)
         {
-            TimeManager.Instance.RegisterEntity(this);
+            collisionTilemap = tilemapObj.GetComponent<Tilemap>();
         }
+
+        UpdatePlayerList();
+
+        if (TimeManager.Instance != null)
+            TimeManager.Instance.RegisterEntity(this);
+
+        wanderTimer = wanderChangeInterval;
+        wanderDirection = GetRandomDirection();
     }
 
     void Update()
     {
-        if (currentTarget == null || !currentTarget.gameObject.activeInHierarchy)
-            currentTarget = GetTarget();
-
-        AimAndShoot(currentTarget);
+        UpdateTargeting();
+        HandleShooting();
     }
 
     void FixedUpdate()
     {
-        if (currentTarget == null)
-            return;
-
-        MoveToward(currentTarget);
+        HandleMovement();
     }
-    
+
     void OnDestroy()
     {
         if (TimeManager.Instance != null)
-        {
             TimeManager.Instance.UnregisterEntity(this);
+    }
+
+    // === Movement ===
+
+    void HandleMovement()
+    {
+        if (currentTarget == null)
+        {
+            // Wander behavior
+            wanderTimer -= Time.fixedDeltaTime;
+            if (wanderTimer <= 0f)
+            {
+                wanderTimer = wanderChangeInterval;
+                wanderDirection = GetRandomDirection();
+            }
+
+            rb.MovePosition(rb.position + wanderDirection * moveSpeed * Time.fixedDeltaTime);
+            return;
         }
+
+        // Chase behavior
+        if (isChasePaused)
+        {
+            chasePauseTimer -= Time.fixedDeltaTime;
+            if (chasePauseTimer <= 0f)
+            {
+                isChasePaused = false;
+            }
+            else
+            {
+                return; // Still paused, do nothing
+            }
+        }
+
+        // Move towards target
+        Vector2 dir = (currentTarget.position - transform.position).normalized;
+        rb.MovePosition(rb.position + dir * moveSpeed * Time.fixedDeltaTime);
+
+        // Set up next pause
+        isChasePaused = true;
+        chasePauseTimer = chasePauseDuration + Random.Range(0f, 0.2f);
     }
 
-    // Self Explanatory
-    void MoveToward(Transform target)
+    Vector2 GetRandomDirection()
     {
-        Vector2 dir = (target.position - transform.position).normalized;
-        Vector2 nextPos = rb.position + dir * moveSpeed * Time.deltaTime;
-        rb.MovePosition(nextPos);
+        return Random.insideUnitCircle.normalized;
     }
 
-    // Self Explanatory
-    void AimAndShoot(Transform target)
+    // === Targeting ===
+
+    void UpdateTargeting()
     {
-        if (target == null) return;
-        
-        Vector2 shootDir = target.position - firePoint.position;
+        // Reprioritize only if current target is invalid or out of sight
+        if (currentTarget == null || !currentTarget.gameObject.activeInHierarchy || !CanSee(currentTarget))
+        {
+            Transform newTarget = null;
+            float closestDist = visionRange;
+
+            foreach (var p in allPlayers)
+            {
+                if (p == null || !p.gameObject.activeInHierarchy) continue;
+
+                float dist = Vector2.Distance(transform.position, p.position);
+                if (dist <= visionRange && CanSee(p))
+                {
+                    if (dist < closestDist)
+                    {
+                        closestDist = dist;
+                        newTarget = p;
+                    }
+                }
+            }
+
+            currentTarget = newTarget;
+        }
+
+        // Overwrite if damaged
+        if (lastDamagedBy != null && lastDamagedBy.gameObject.activeInHierarchy && CanSee(lastDamagedBy))
+            currentTarget = lastDamagedBy;
+    }
+
+    bool CanSee(Transform target)
+    {
+        Vector2 start = transform.position;
+        Vector2 end = target.position;
+        Vector2 dir = (end - start).normalized;
+        float dist = Vector2.Distance(start, end);
+
+        LayerMask blockingLayer = LayerMask.GetMask("Terrain", "Default"); // Adjust as needed
+
+        RaycastHit2D hit = Physics2D.Raycast(start, dir, dist, blockingLayer);
+        if (hit.collider != null)
+        {
+            // Blocked if the first thing hit is not the target
+            if (hit.collider.transform != target && !hit.collider.CompareTag("Player"))
+                return false;
+        }
+
+        return true;
+    }
+
+    // === Shooting ===
+
+    void HandleShooting()
+    {
+        if (currentTarget == null) return;
+
+        Vector2 shootDir = currentTarget.position - firePoint.position;
         firePoint.rotation = Quaternion.Euler(0, 0, Mathf.Atan2(shootDir.y, shootDir.x) * Mathf.Rad2Deg);
 
         shootTimer -= Time.deltaTime;
-        if (shootTimer <= 0f)
+        if (shootTimer <= 0f && CanShootTarget(currentTarget))
         {
             Shoot(shootDir.normalized);
             shootTimer = shootCooldown;
         }
     }
 
-    // Self Explanatory
     void Shoot(Vector2 dir)
     {
         GameObject bullet = Instantiate(bulletPrefab, firePoint.position, Quaternion.identity);
@@ -97,31 +201,39 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
         }
     }
 
-    // Choose target based on who damage most recently otherwise does closest
-    Transform GetTarget()
+    bool CanShootTarget(Transform target)
     {
-        if (lastDamagedBy != null && lastDamagedBy.gameObject.activeInHierarchy)
-            return lastDamagedBy;
+        Vector2 start = firePoint.position;
+        Vector2 end = target.position;
+        Vector2 dir = (end - start).normalized;
+        float dist = Vector2.Distance(start, end);
 
-        Transform closest = null;
-        float minDist = Mathf.Infinity;
-
-        foreach (var p in allPlayers)
+        RaycastHit2D[] hits = Physics2D.RaycastAll(start, dir, dist);
+        foreach (var hit in hits)
         {
-            if (p == null || !p.gameObject.activeInHierarchy) continue;
-
-            float dist = Vector2.Distance(transform.position, p.position);
-            if (dist < minDist)
+            if (hit.collider != null)
             {
-                minDist = dist;
-                closest = p;
+                GameObject go = hit.collider.gameObject;
+
+                if (go == target.gameObject) return true;
+                if (go.CompareTag("Enemy") && go != gameObject)
+                {
+                    return false; // Another enemy is blocking
+                }
+
+                if (collisionTilemap != null &&
+                    collisionTilemap.GetTile(collisionTilemap.WorldToCell(hit.point)) != null)
+                {
+                    return false;
+                }
             }
         }
 
-        return closest;
+        return true;
     }
 
-    // Simple helpers
+    // === Player Management ===
+
     public void SetLastDamagedBy(Transform player)
     {
         lastDamagedBy = player;
@@ -141,17 +253,13 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
     void UpdatePlayerList()
     {
         foreach (var go in GameObject.FindGameObjectsWithTag("Player"))
-        {
             RegisterPlayer(go.transform);
-        }
     }
-    
-    // ITimeRewindable implementation
-    public string GetEntityId()
-    {
-        return entityId;
-    }
-    
+
+    // === Rewind Integration ===
+
+    public string GetEntityId() => entityId;
+
     public EntitySnapshot TakeSnapshot()
     {
         EntitySnapshot snapshot = new EntitySnapshot(
@@ -162,43 +270,26 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
             gameObject.activeInHierarchy,
             enemyHealth != null ? enemyHealth.CurrentHealth : 100f
         );
-        
-        // Add enemy-specific data
         snapshot.currentTarget = currentTarget;
         snapshot.shootTimer = shootTimer;
-        
         return snapshot;
     }
-    
-    public BulletSnapshot TakeBulletSnapshot()
-    {
-        // Enemies don't implement this - only bullets do
-        return null;
-    }
-    
+
+    public BulletSnapshot TakeBulletSnapshot() => null;
+
     public void RestoreFromSnapshot(EntitySnapshot snapshot)
     {
-        // Restore position and state
         transform.position = snapshot.position;
         transform.rotation = snapshot.rotation;
         rb.velocity = snapshot.velocity;
-        
-        // Restore enemy-specific data
         currentTarget = snapshot.currentTarget;
         shootTimer = snapshot.shootTimer;
-        
-        // Restore health
+
         if (enemyHealth != null)
-        {
             enemyHealth.CurrentHealth = snapshot.health;
-        }
-        
-        // Set active state
+
         gameObject.SetActive(snapshot.isActive);
     }
-    
-    public bool IsActive()
-    {
-        return gameObject.activeInHierarchy;
-    }
+
+    public bool IsActive() => gameObject.activeInHierarchy;
 }
