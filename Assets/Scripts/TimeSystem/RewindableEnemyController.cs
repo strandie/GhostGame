@@ -79,6 +79,8 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
 
     void HandleMovement()
     {
+        Vector2 movement;
+
         if (currentTarget == null)
         {
             // Wander behavior
@@ -88,32 +90,37 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
                 wanderTimer = wanderChangeInterval;
                 wanderDirection = GetRandomDirection();
             }
-
-            rb.MovePosition(rb.position + wanderDirection * moveSpeed * Time.fixedDeltaTime);
-            return;
+            movement = wanderDirection;
         }
-
-        // Chase behavior
-        if (isChasePaused)
+        else
         {
-            chasePauseTimer -= Time.fixedDeltaTime;
-            if (chasePauseTimer <= 0f)
+            // Chase behavior
+            if (isChasePaused)
             {
+                chasePauseTimer -= Time.fixedDeltaTime;
+                if (chasePauseTimer > 0f)
+                    return;
                 isChasePaused = false;
             }
-            else
-            {
-                return; // Still paused, do nothing
-            }
+
+            movement = (currentTarget.position - transform.position).normalized;
+
+            // Set up next pause
+            isChasePaused = true;
+            chasePauseTimer = chasePauseDuration + Random.Range(0f, 0.2f);
         }
 
-        // Move towards target
-        Vector2 dir = (currentTarget.position - transform.position).normalized;
-        rb.MovePosition(rb.position + dir * moveSpeed * Time.fixedDeltaTime);
+        Vector2 targetPos = rb.position + movement * moveSpeed * Time.fixedDeltaTime;
 
-        // Set up next pause
-        isChasePaused = true;
-        chasePauseTimer = chasePauseDuration + Random.Range(0f, 0.2f);
+        // Use Rigidbody2D.Cast to detect obstacles in the way
+        RaycastHit2D[] hits = new RaycastHit2D[1];
+        int count = rb.Cast(movement, hits, moveSpeed * Time.fixedDeltaTime);
+
+        if (count == 0)
+        {
+            rb.MovePosition(targetPos);
+        }
+        // else blocked — do not move
     }
 
     Vector2 GetRandomDirection()

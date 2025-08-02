@@ -99,6 +99,11 @@ public class RewindablePlayerBullet : MonoBehaviour, ITimeRewindable
             Destroy(gameObject);
         }
         
+        if (other.CompareTag("Terrain"))
+        {
+            Destroy(gameObject);
+        }
+        
         // Add ghost collision handling
         if (other.CompareTag("Ghost"))
         {

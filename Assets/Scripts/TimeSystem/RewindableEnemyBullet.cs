@@ -83,7 +83,7 @@ public class RewindableEnemyBullet : MonoBehaviour, ITimeRewindable
 
             Destroy(gameObject);
         }
-        
+
         // Add ghost collision handling
         if (other.CompareTag("Ghost"))
         {
@@ -94,6 +94,10 @@ public class RewindableEnemyBullet : MonoBehaviour, ITimeRewindable
                 // Bullet destruction is handled in GhostDamageHandler
                 return;
             }
+        }
+        if (other.CompareTag("Terrain"))
+        {
+            Destroy(gameObject);
         }
     }
     
