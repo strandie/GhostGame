@@ -5,7 +5,12 @@ using UnityEngine;
 public class EnemySpawner : MonoBehaviour
 {
     public GameObject enemyPrefab;
-    public int spawnCount = 2;
+
+    [Header("Group Spawning")]
+    public int totalGroups = 3;                 // How many groups to spawn
+    public int minPerGroup = 3;
+    public int maxPerGroup = 6;
+    public float groupRadius = 2f;
 
     private bool[,] walkable;
     private int mapWidth, mapHeight;
@@ -18,24 +23,47 @@ public class EnemySpawner : MonoBehaviour
         this.mapHeight = mapHeight;
         this.worldOffset = offset;
 
-        int attempts = 0;
-        int spawned = 0;
+        int groupAttempts = 0;
+        int groupsSpawned = 0;
 
-        while (spawned < spawnCount && attempts < 1000)
+        while (groupsSpawned < totalGroups && groupAttempts < 1000)
         {
-            attempts++;
+            groupAttempts++;
+
             int x = Random.Range(0, mapWidth);
             int y = Random.Range(0, mapHeight);
 
-            if (walkable[x, y])
+            if (!walkable[x, y])
+                continue;
+
+            Vector3 groupCenter = new Vector3(x + worldOffset.x + 0.5f, y + worldOffset.y + 0.5f, 0);
+            int enemiesInGroup = Random.Range(minPerGroup, maxPerGroup + 1);
+
+            int enemiesSpawned = 0;
+            int subgroupAttempts = 0;
+
+            while (enemiesSpawned < enemiesInGroup && subgroupAttempts < 50)
             {
-                Vector3 spawnPos = new Vector3(x + worldOffset.x + 0.5f, y + worldOffset.y + 0.5f, 0);
-                SpawnEnemy(spawnPos);
-                spawned++;
+                subgroupAttempts++;
+
+                Vector2 offsetPos = Random.insideUnitCircle * groupRadius;
+                Vector3 spawnPos = groupCenter + new Vector3(offsetPos.x, offsetPos.y, 0);
+
+                int cellX = Mathf.FloorToInt(spawnPos.x - worldOffset.x);
+                int cellY = Mathf.FloorToInt(spawnPos.y - worldOffset.y);
+
+                if (cellX >= 0 && cellX < mapWidth && cellY >= 0 && cellY < mapHeight && walkable[cellX, cellY])
+                {
+                    SpawnEnemy(spawnPos);
+                    enemiesSpawned++;
+                }
             }
+
+            if (enemiesSpawned > 0)
+                groupsSpawned++;
         }
 
-        Debug.Log($"Spawned {spawned} enemies.");
+        Debug.Log($"Spawned {groupsSpawned} groups of enemies.");
     }
 
     void SpawnEnemy(Vector3 position)
