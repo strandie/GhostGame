@@ -473,7 +473,7 @@ MonoBehaviour:
   width: 30
   height: 30
   padding: 10
-  blockFillChance: 0.1
+  blockFillChance: 0.05
   minWalkableRatio: 0.1
 --- !u!156049354 &867855261
 Grid:
@@ -900,7 +900,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   enemyPrefab: {fileID: 5485169054191972450, guid: 03b86d7be60c4ce4181d7bbd0c497c1e, type: 3}
-  spawnCount: 2
+  totalGroups: 3
+  minPerGroup: 3
+  maxPerGroup: 6
+  groupRadius: 2
 --- !u!4 &1197560793
 Transform:
   m_ObjectHideFlags: 0
@@ -1224,9 +1227,9 @@ GameObject:
   - component: {fileID: 1881321012}
   - component: {fileID: 1881321011}
   - component: {fileID: 1881321010}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Collision
-  m_TagString: Untagged
+  m_TagString: Terrain
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

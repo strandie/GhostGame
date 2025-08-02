@@ -9,6 +9,7 @@ TagManager:
   - Bullet
   - EnemyBullet
   - GhostBullet
+  - Terrain
   layers:
   - Default
   - TransparentFX
@@ -19,7 +20,7 @@ TagManager:
   - 
   - Enemy
   - Bullet
-  - 
+  - Terrain
   - 
   - 
   - 
