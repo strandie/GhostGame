@@ -29,10 +29,16 @@ public class PlayerController : MonoBehaviour
     private Vector2 movementInput;
     private Camera mainCam;
 
+    private Animator animator;
+
+
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         mainCam = Camera.main;
+        //animator = GetComponent<Animator>();
+        //animator = playerSpriteRenderer.GetComponent<Animator>();
+        animator = GetComponentInChildren<Animator>();
 
         if (playerData != null)
         {
@@ -48,6 +54,7 @@ public class PlayerController : MonoBehaviour
     void Update()
     {
         ProcessInputs();
+        animator.SetBool("IsRunning", movementInput.sqrMagnitude > 0.01f);
         HandleFlip();
         RotateGunToMouse();
     }
