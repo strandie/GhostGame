@@ -9,6 +9,10 @@ public class Health : MonoBehaviour
     [Header("Death Behavior")]
     public bool allowDestruction = true; // Set to false for enemies that need rewind
 
+    [Header("Death Effects")]
+    public ParticleSystem bloodParticlesPrefab; // Make sure this is a 2D-looking prefab
+
+
     public float CurrentHealth 
     {
         get => currentHealth;
@@ -54,6 +58,12 @@ public class Health : MonoBehaviour
     private void Die()
     {
         onDeath.Invoke();
+
+        if (bloodParticlesPrefab != null)
+        {
+            ParticleSystem blood = Instantiate(bloodParticlesPrefab, transform.position, Quaternion.identity);
+            Destroy(blood.gameObject, blood.main.duration + blood.main.startLifetime.constantMax);
+        }
         
         // Only destroy if allowed (players, non-rewindable objects)
         if (allowDestruction)
