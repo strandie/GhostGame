@@ -12,7 +12,6 @@ public class RewindUI : MonoBehaviour
     public Image abilityIcon;           // The ability icon
     public Image cooldownOverlay;       // Gray overlay that fills during cooldown
     public TextMeshProUGUI cooldownText; // Text showing remaining time
-    public Button abilityButton;        // Optional button for clicking
     
     [Header("Visual Settings")]
     public Color readyColor = Color.white;
@@ -24,8 +23,14 @@ public class RewindUI : MonoBehaviour
     public float pulseSpeed = 2f;
     public float pulseIntensity = 0.2f;
     
+    [Header("Audio")]
+    public AudioClip readySound;        // Sound when ability comes off cooldown
+    public AudioClip activateSound;     // Sound when ability is used
+    
     private bool isOnCooldown = false;
     private CanvasGroup canvasGroup;
+    private AudioSource audioSource;
+    private bool wasOnCooldown = false; // Track state changes
     
     void Awake()
     {
@@ -42,6 +47,14 @@ public class RewindUI : MonoBehaviour
     void Start()
     {
         canvasGroup = GetComponent<CanvasGroup>();
+        audioSource = GetComponent<AudioSource>();
+        
+        // Add AudioSource if it doesn't exist
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+            audioSource.playOnAwake = false;
+        }
         
         // Setup initial state
         if (abilityIcon != null && rewindIconSprite != null)
@@ -49,13 +62,7 @@ public class RewindUI : MonoBehaviour
             abilityIcon.sprite = rewindIconSprite;
         }
         
-        // Setup button click if button exists
-        if (abilityButton != null)
-        {
-            abilityButton.onClick.AddListener(OnAbilityButtonClick);
-        }
-        
-        // Initialize UI
+        // Initialize UI as ready
         UpdateCooldown(0f, 10f, false);
     }
     
@@ -67,11 +74,24 @@ public class RewindUI : MonoBehaviour
             float pulse = 1f + Mathf.Sin(Time.time * pulseSpeed) * pulseIntensity;
             abilityIcon.transform.localScale = Vector3.one * pulse;
         }
+        
+        // Handle keyboard input
+        if (Input.GetKeyDown(KeyCode.Mouse1) && !isOnCooldown)
+        {
+            OnAbilityButtonClick();
+        }
     }
     
     public void UpdateCooldown(float remainingTime, float totalCooldown, bool onCooldown)
     {
+        // Check if we just came off cooldown
+        if (wasOnCooldown && !onCooldown)
+        {
+            PlayReadyEffect();
+        }
+        
         isOnCooldown = onCooldown;
+        wasOnCooldown = onCooldown;
         
         if (onCooldown)
         {
@@ -92,13 +112,18 @@ public class RewindUI : MonoBehaviour
             if (cooldownText != null)
             {
                 cooldownText.gameObject.SetActive(true);
-                cooldownText.text = Mathf.Ceil(remainingTime).ToString();
+                // Show decimal for last second, whole numbers otherwise
+                if (remainingTime <= 1f)
+                {
+                    cooldownText.text = remainingTime.ToString("F1");
+                }
+                else
+                {
+                    cooldownText.text = Mathf.Ceil(remainingTime).ToString();
+                }
             }
             
-            if (abilityButton != null)
-            {
-                abilityButton.interactable = false;
-            }
+
         }
         else
         {
@@ -117,11 +142,6 @@ public class RewindUI : MonoBehaviour
             {
                 cooldownText.gameObject.SetActive(false);
             }
-            
-            if (abilityButton != null)
-            {
-                abilityButton.interactable = true;
-            }
         }
     }
     
@@ -129,6 +149,12 @@ public class RewindUI : MonoBehaviour
     {
         if (!isOnCooldown && TimeManager.Instance != null)
         {
+            // Play activation sound
+            if (audioSource != null && activateSound != null)
+            {
+                audioSource.PlayOneShot(activateSound);
+            }
+            
             // Trigger rewind through TimeManager
             TimeManager.Instance.TryStartRewind();
         }
@@ -150,10 +176,15 @@ public class RewindUI : MonoBehaviour
     
     public void PlayReadyEffect()
     {
-        // Optional: Add particle effects, sound, etc. when ability comes off cooldown
+        // Play ready sound
+        if (audioSource != null && readySound != null)
+        {
+            audioSource.PlayOneShot(readySound);
+        }
+        
+        // Visual flash effect
         if (abilityIcon != null)
         {
-            // You could add a brief flash or scale effect here
             StartCoroutine(ReadyFlashEffect());
         }
     }
@@ -163,7 +194,11 @@ public class RewindUI : MonoBehaviour
         if (abilityIcon == null) yield break;
         
         Color originalColor = abilityIcon.color;
+        Vector3 originalScale = abilityIcon.transform.localScale;
+        
+        // Brief flash and scale effect
         abilityIcon.color = Color.white;
+        abilityIcon.transform.localScale = originalScale * 1.1f;
         
         float flashTime = 0.3f;
         float elapsed = 0f;
@@ -172,10 +207,14 @@ public class RewindUI : MonoBehaviour
         {
             elapsed += Time.deltaTime;
             float t = elapsed / flashTime;
+            
             abilityIcon.color = Color.Lerp(Color.white, originalColor, t);
+            abilityIcon.transform.localScale = Vector3.Lerp(originalScale * 1.1f, originalScale, t);
+            
             yield return null;
         }
         
         abilityIcon.color = originalColor;
+        abilityIcon.transform.localScale = originalScale;
     }
 }
