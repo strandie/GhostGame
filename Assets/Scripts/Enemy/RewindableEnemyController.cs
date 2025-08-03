@@ -12,6 +12,8 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
     [Header("Tilemap")]
     public Tilemap collisionTilemap;
 
+    private Vector2 currentVelocity;
+
     [Header("Movement")]
     public float moveSpeed = 1f;
     public float wanderChangeInterval = 2f;
@@ -97,45 +99,67 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
 
         if (currentTarget == null)
         {
-            // Wander behavior
+            // Smooth wander behavior
             wanderTimer -= Time.fixedDeltaTime;
             if (wanderTimer <= 0f)
             {
                 wanderTimer = wanderChangeInterval;
                 wanderDirection = GetRandomDirection();
             }
+
+            // Slowly blend to the new direction
+            wanderDirection = Vector2.Lerp(wanderDirection, GetRandomDirection(), 0.05f).normalized;
             movement = wanderDirection;
         }
         else
         {
-            // Chase behavior
+            // Chase behavior with smooth weaving
             if (isChasePaused)
             {
                 chasePauseTimer -= Time.fixedDeltaTime;
                 if (chasePauseTimer > 0f)
                     return;
+
                 isChasePaused = false;
             }
 
-            movement = (currentTarget.position - transform.position).normalized;
+            Vector2 toTarget = (currentTarget.position - transform.position).normalized;
 
-            // Set up next pause
+            // Weaving
+            float weaveAmount = 0.4f;  // Slightly reduced for smoother feel
+            float weaveSpeed = 3f;     // Matches movement speed better
+            Vector2 perp = new Vector2(-toTarget.y, toTarget.x);
+            float sine = Mathf.Sin(Time.time * weaveSpeed);
+            Vector2 weave = perp * sine * weaveAmount;
+
+            Vector2 desiredDirection = (toTarget + weave).normalized;
+
+            // Blend to the final direction for polish
+            movement = Vector2.Lerp(rb.velocity.normalized, desiredDirection, 0.2f).normalized;
+
+            // Setup next chase pause
             isChasePaused = true;
-            chasePauseTimer = chasePauseDuration + Random.Range(0f, 0.2f);
+            chasePauseTimer = chasePauseDuration + Random.Range(0f, 0.15f); // Slight variation
         }
 
+        // Attempt to move with smoother physics-aware check
         Vector2 targetPos = rb.position + movement * moveSpeed * Time.fixedDeltaTime;
 
-        // Use Rigidbody2D.Cast to detect obstacles in the way
-        RaycastHit2D[] hits = new RaycastHit2D[1];
-        int count = rb.Cast(movement, hits, moveSpeed * Time.fixedDeltaTime);
+        float checkRadius = 0.15f;  // Slightly larger to prevent edge clipping
+        RaycastHit2D hit = Physics2D.CircleCast(rb.position, checkRadius, movement, moveSpeed * Time.fixedDeltaTime, LayerMask.GetMask("Terrain"));
 
-        if (count == 0)
+        if (hit.collider == null)
         {
             rb.MovePosition(targetPos);
         }
-        // else blocked — do not move
+        else
+        {
+            // Reflect or nudge in a new direction if blocked
+            wanderDirection = Vector2.Reflect(movement, hit.normal);
+        }
     }
+
+
 
     Vector2 GetRandomDirection()
     {

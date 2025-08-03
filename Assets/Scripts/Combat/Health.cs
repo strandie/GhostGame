@@ -38,6 +38,8 @@ public class Health : MonoBehaviour
         currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
         onHealthChanged.Invoke(currentHealth / maxHealth);
 
+        Debug.Log($"{gameObject.name} took {amount} damage from");
+
         DamageFlash flash = GetComponent<DamageFlash>();
         if (flash != null)
             flash.Flash();
@@ -46,6 +48,7 @@ public class Health : MonoBehaviour
         {
             Die();
         }
+
     }
 
     private void Die()

@@ -50,10 +50,11 @@ public class EnemySpawner : MonoBehaviour
 
             Vector3 groupCenter = new Vector3(x + worldOffset.x + 0.5f, y + worldOffset.y + 0.5f, 0);
 
-            // ✅ Avoid 15x15 square around player
             if (Vector2.Distance(groupCenter, playerPos) < 7.5f)
                 continue;
             int enemiesInGroup = Random.Range(minPerGroup, maxPerGroup + 1);
+            float thisGroupRadius = groupRadius * Random.Range(0.8f, 1.5f);
+
 
             int enemiesSpawned = 0;
             int subgroupAttempts = 0;
@@ -62,7 +63,8 @@ public class EnemySpawner : MonoBehaviour
             {
                 subgroupAttempts++;
 
-                Vector2 offsetPos = Random.insideUnitCircle * groupRadius;
+                //Vector2 offsetPos = Random.insideUnitCircle * groupRadius;
+                Vector2 offsetPos = Random.insideUnitCircle * thisGroupRadius;
                 Vector3 spawnPos = groupCenter + new Vector3(offsetPos.x, offsetPos.y, 0);
 
                 int cellX = Mathf.FloorToInt(spawnPos.x - worldOffset.x);

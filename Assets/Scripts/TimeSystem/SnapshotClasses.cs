@@ -20,20 +20,21 @@ public class EntitySnapshot
     public string entityId;
     public Vector3 position;
     public Quaternion rotation;
-    public Vector3 velocity;
+    public Vector2 velocity;
     public bool isActive;
     public float health;
     
-    // Player specific
+    // Player-specific data (from your existing PlayerController)
     public bool flipX;
     public bool isRunning;
     public Vector3 gunRotation;
     
-    // Enemy specific
+    // Enemy/General data (existing and new)
     public Transform currentTarget;
-    public float shootTimer;
+    public float shootTimer; // Can be reused for wanderTimer in flexible enemies
     
-    public EntitySnapshot(string id, Vector3 pos, Quaternion rot, Vector3 vel, bool active, float hp)
+    // Constructor for basic snapshot
+    public EntitySnapshot(string id, Vector3 pos, Quaternion rot, Vector2 vel, bool active, float hp)
     {
         entityId = id;
         position = pos;
@@ -41,6 +42,13 @@ public class EntitySnapshot
         velocity = vel;
         isActive = active;
         health = hp;
+        
+        // Initialize optional fields with defaults
+        flipX = false;
+        isRunning = false;
+        gunRotation = Vector3.zero;
+        currentTarget = null;
+        shootTimer = 0f;
     }
 }
 
