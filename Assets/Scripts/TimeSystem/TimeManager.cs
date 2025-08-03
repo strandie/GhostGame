@@ -1,6 +1,8 @@
+
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class TimeManager : MonoBehaviour
 {
@@ -24,6 +26,26 @@ public class TimeManager : MonoBehaviour
     public GameObject playerBulletPrefab;
     public GameObject enemyBulletPrefab;
     
+    [Header("Rewind Effects")]
+    [Tooltip("Clock UI Image to animate")]
+    public Image clockImage;
+    [Tooltip("Wave filter GameObject with SpriteRenderer")]
+    public SpriteRenderer waveFilter;
+    [Tooltip("Audio source for rewind sound effect")]
+    public AudioSource rewindAudioSource;
+    [Tooltip("Sound clip to play during rewind")]
+    public AudioClip rewindSoundClip;
+    [Tooltip("Duration of the rewind effect in seconds")]
+    public float rewindEffectDuration = 2f;
+    [Tooltip("Wave effect properties")]
+    public float waveSpeed = 5f;
+    public float waveIntensity = 0.3f;
+    public Color waveColor = new Color(0.2f, 0.6f, 1f, 0.4f); // Blue wave
+    [Tooltip("Clock animation properties")]
+    public float clockSpinSpeed = -3000f; // degrees per animation
+    public float clockMaxScale = 1.5f;
+    public float clockMinScale = 0.3f;
+    
     private Queue<GameStateSnapshot> gameHistory = new Queue<GameStateSnapshot>();
     private float snapshotInterval;
     private float lastSnapshotTime;
@@ -31,6 +53,9 @@ public class TimeManager : MonoBehaviour
     
     private List<ITimeRewindable> rewindableEntities = new List<ITimeRewindable>();
     private List<ITimeRewindable> rewindableBullets = new List<ITimeRewindable>();
+    
+    // Effect state tracking
+    private bool isPlayingRewindEffect = false;
     
     void Awake()
     {
@@ -48,6 +73,17 @@ public class TimeManager : MonoBehaviour
     void Start()
     {
         snapshotInterval = 1f / snapshotsPerSecond;
+        
+        // Initialize effects
+        InitializeRewindEffects();
+
+        // Ensure clock starts invisible
+        if (clockImage != null)
+        {
+            Color transparent = clockImage.color;
+            transparent.a = 0f;
+            clockImage.color = transparent;
+        }
         
         // Auto-assign bullet prefabs if not set
         if (playerBulletPrefab == null)
@@ -75,7 +111,7 @@ public class TimeManager : MonoBehaviour
     
     void Update()
     {
-        if (!isRewinding)
+        if (!isRewinding && !isPlayingRewindEffect)
         {
             RecordGameState();
             
@@ -89,19 +125,225 @@ public class TimeManager : MonoBehaviour
         UpdateRewindUI();
     }
     
+    private void InitializeRewindEffects()
+    {
+        // Auto-find components if not assigned
+        if (clockImage == null)
+        {
+            // Try to find clock image in UI Canvas
+            Canvas canvas = FindObjectOfType<Canvas>();
+            if (canvas != null)
+            {
+                Transform clockTransform = canvas.transform.Find("ClockAnimation");
+                if (clockTransform != null)
+                {
+                    clockImage = clockTransform.GetComponent<Image>();
+                }
+            }
+        }
+        
+        if (waveFilter == null)
+        {
+            // Try to find wave filter GameObject
+            GameObject waveObj = GameObject.Find("WaveFilter");
+            if (waveObj != null)
+            {
+                waveFilter = waveObj.GetComponent<SpriteRenderer>();
+            }
+        }
+        
+        if (rewindAudioSource == null)
+        {
+            // Try to find audio source on this object or create one
+            rewindAudioSource = GetComponent<AudioSource>();
+            if (rewindAudioSource == null)
+            {
+                rewindAudioSource = gameObject.AddComponent<AudioSource>();
+            }
+        }
+        
+        // Ensure wave filter starts invisible
+        if (waveFilter != null)
+        {
+            Color transparent = waveColor;
+            transparent.a = 0f;
+            waveFilter.color = transparent;
+        }
+    }
+    
     public void TryStartRewind()
     {
         float timeSinceLastRewind = Time.time - lastRewindTime;
         
         if (timeSinceLastRewind >= rewindCooldown)
         {
-            StartRewind();
+            // Successful rewind - play effects!
+            StartCoroutine(PlayRewindEffectsAndRewind());
             lastRewindTime = Time.time;
         }
         else
         {
             float remainingCooldown = rewindCooldown - timeSinceLastRewind;
             Debug.Log($"Rewind on cooldown! {remainingCooldown:F1} seconds remaining");
+        }
+    }
+    
+    private IEnumerator PlayRewindEffectsAndRewind()
+    {
+        if (gameHistory.Count == 0) yield break;
+        
+        isPlayingRewindEffect = true;
+        
+        // Start all effects simultaneously
+        StartCoroutine(PlayClockAnimation());
+        StartCoroutine(PlayWaveEffect());
+        PlayRewindSound();
+        
+        // Wait a brief moment for effect buildup
+        yield return new WaitForSeconds(0.2f);
+        
+        // Perform the actual rewind
+        StartRewind();
+        
+        // Wait for effects to finish
+        yield return new WaitForSeconds(rewindEffectDuration - 0.2f);
+        
+        isPlayingRewindEffect = false;
+    }
+    
+    private IEnumerator PlayClockAnimation()
+    {
+        if (clockImage == null)
+        {
+            Debug.LogWarning("Clock Image not assigned!");
+            yield break;
+        }
+        
+        RectTransform clockRect = clockImage.rectTransform;
+        Vector3 originalScale = clockRect.localScale;
+        float originalRotation = clockRect.eulerAngles.z;
+        Color originalColor = clockImage.color;
+        
+        float elapsedTime = 0f;
+        
+        while (elapsedTime < rewindEffectDuration)
+        {
+            elapsedTime += Time.deltaTime;
+            float progress = elapsedTime / rewindEffectDuration;
+            
+            // Rotation: spin continuously
+            float currentRotation = originalRotation + (clockSpinSpeed * progress);
+            clockRect.rotation = Quaternion.Euler(0, 0, currentRotation);
+            
+            // Scale: start small, grow big, shrink back
+            float scaleProgress;
+            if (progress < 0.5f)
+            {
+                // First half: grow from min to max
+                scaleProgress = Mathf.Lerp(clockMinScale, clockMaxScale, progress * 2f);
+            }
+            else
+            {
+                // Second half: shrink from max to min
+                scaleProgress = Mathf.Lerp(clockMaxScale, clockMinScale, (progress - 0.5f) * 2f);
+            }
+            clockRect.localScale = Vector3.one * scaleProgress;
+            
+            // Alpha: fade in quickly, stay visible, fade out
+            float alpha;
+            if (progress < 0.2f)
+            {
+                // Fade in
+                alpha = progress / 0.2f;
+            }
+            else if (progress > 0.8f)
+            {
+                // Fade out
+                alpha = 1f - ((progress - 0.8f) / 0.2f);
+            }
+            else
+            {
+                // Full visibility
+                alpha = 1f;
+            }
+            
+            Color currentColor = originalColor;
+            currentColor.a = alpha;
+            clockImage.color = currentColor;
+            
+            yield return null;
+        }
+        
+        // Reset to original state
+        clockRect.localScale = originalScale;
+        clockRect.rotation = Quaternion.Euler(0, 0, originalRotation);
+        Color transparent = originalColor;
+        transparent.a = 0f;
+        clockImage.color = transparent;
+        
+        Debug.Log("Clock animation completed");
+    }
+    
+    private IEnumerator PlayWaveEffect()
+    {
+        if (waveFilter == null) yield break;
+        
+        float elapsedTime = 0f;
+        
+        while (elapsedTime < rewindEffectDuration)
+        {
+            elapsedTime += Time.deltaTime;
+            
+            // Create wave effect using sine wave
+            float wavePhase = elapsedTime * waveSpeed;
+            float waveValue = Mathf.Sin(wavePhase) * 0.5f + 0.5f; // Normalize to 0-1
+            
+            // Create intensity envelope (fade in and out)
+            float intensityEnvelope;
+            if (elapsedTime < rewindEffectDuration * 0.3f)
+            {
+                // Fade in
+                intensityEnvelope = elapsedTime / (rewindEffectDuration * 0.3f);
+            }
+            else if (elapsedTime > rewindEffectDuration * 0.7f)
+            {
+                // Fade out
+                float fadeOutStart = rewindEffectDuration * 0.7f;
+                float fadeOutDuration = rewindEffectDuration * 0.3f;
+                intensityEnvelope = 1f - ((elapsedTime - fadeOutStart) / fadeOutDuration);
+            }
+            else
+            {
+                // Full intensity
+                intensityEnvelope = 1f;
+            }
+            
+            // Apply wave and intensity to alpha
+            float finalAlpha = waveValue * waveIntensity * intensityEnvelope;
+            Color currentColor = waveColor;
+            currentColor.a = finalAlpha;
+            waveFilter.color = currentColor;
+            
+            yield return null;
+        }
+        
+        // Ensure it's fully transparent at the end
+        Color transparent = waveColor;
+        transparent.a = 0f;
+        waveFilter.color = transparent;
+    }
+    
+    private void PlayRewindSound()
+    {
+        if (rewindAudioSource != null && rewindSoundClip != null)
+        {
+            rewindAudioSource.clip = rewindSoundClip;
+            rewindAudioSource.Play();
+            Debug.Log("Rewind sound played");
+        }
+        else
+        {
+            Debug.LogWarning("Rewind audio source or clip not assigned!");
         }
     }
     

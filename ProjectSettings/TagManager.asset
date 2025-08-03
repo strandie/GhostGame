@@ -21,7 +21,7 @@ TagManager:
   - Enemy
   - Bullet
   - Terrain
-  - 
+  - Clock
   - 
   - 
   - 
@@ -44,6 +44,9 @@ TagManager:
   - 
   - 
   m_SortingLayers:
+  - name: Clock
+    uniqueID: 4197596961
+    locked: 0
   - name: Default
     uniqueID: 0
     locked: 0
