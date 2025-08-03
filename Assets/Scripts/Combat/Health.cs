@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.SceneManagement;
+
 
 public class Health : MonoBehaviour
 {
@@ -63,6 +65,13 @@ public class Health : MonoBehaviour
         {
             ParticleSystem blood = Instantiate(bloodParticlesPrefab, transform.position, Quaternion.identity);
             Destroy(blood.gameObject, blood.main.duration + blood.main.startLifetime.constantMax);
+        }
+
+        if (CompareTag("Player"))
+        {
+            // Load the Game Over scene (make sure it’s added to Build Settings)
+            SceneManager.LoadScene("GameOverScene");
+            return;
         }
         
         // Only destroy if allowed (players, non-rewindable objects)

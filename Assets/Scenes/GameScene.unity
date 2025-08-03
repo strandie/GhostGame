@@ -1022,10 +1022,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d0a2159235d746f4780e3813a693d2ce, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHealth: 500
+  maxHealth: 200
   currentHealth: 0
   allowDestruction: 1
-  bloodParticlesPrefab: {fileID: 0}
+  bloodParticlesPrefab: {fileID: 1736762733505473828}
   onHealthChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -2720,6 +2720,11 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: ae642b4d4770d9b43b8b78d53c7dd314, type: 3}
+--- !u!198 &1736762733505473828 stripped
+ParticleSystem:
+  m_CorrespondingSourceObject: {fileID: 3821475392844974279, guid: ae642b4d4770d9b43b8b78d53c7dd314, type: 3}
+  m_PrefabInstance: {fileID: 1736762733505473827}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
