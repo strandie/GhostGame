@@ -180,6 +180,7 @@ public class GhostPlayer : MonoBehaviour
         // Note: Shots are now handled separately in ExecuteShotsAtCurrentTime
     }
     
+    // Replace the GhostShoot method in GhostPlayer with this:
     private void GhostShoot(Vector2 direction)
     {
         if (ghostBulletPrefab == null || ghostFirePoint == null)
@@ -191,7 +192,8 @@ public class GhostPlayer : MonoBehaviour
         RewindablePlayerBullet bulletScript = bullet.GetComponent<RewindablePlayerBullet>();
         if (bulletScript != null)
         {
-            bulletScript.Initialize(direction);
+            // Mark this bullet as coming from a ghost
+            bulletScript.Initialize(direction, true); // true = fromGhost
             bullet.tag = "GhostBullet";
         }
         

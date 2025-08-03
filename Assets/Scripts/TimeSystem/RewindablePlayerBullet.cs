@@ -12,13 +12,15 @@ public class RewindablePlayerBullet : MonoBehaviour, ITimeRewindable
     private string bulletId;
     private float remainingLifetime;
     private float startTime;
+    private bool isGhostBullet = false; // Track if this is from a ghost
 
-    public void Initialize(Vector2 shootDirection)
+    public void Initialize(Vector2 shootDirection, bool fromGhost = false)
     {
         direction = shootDirection.normalized;
         bulletId = System.Guid.NewGuid().ToString();
         remainingLifetime = lifeTime;
         startTime = Time.time;
+        isGhostBullet = fromGhost;
 
         // Rotate the bullet sprite to face direction
         float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
@@ -33,6 +35,12 @@ public class RewindablePlayerBullet : MonoBehaviour, ITimeRewindable
         }
     }
     
+    // Overload for backward compatibility
+    public void Initialize(Vector2 shootDirection)
+    {
+        Initialize(shootDirection, false);
+    }
+    
     public void InitializeFromSnapshot(BulletSnapshot snapshot)
     {
         direction = snapshot.direction;
@@ -40,6 +48,8 @@ public class RewindablePlayerBullet : MonoBehaviour, ITimeRewindable
         damage = snapshot.damage;
         speed = snapshot.speed;
         remainingLifetime = snapshot.remainingLifetime;
+        // Assume snapshots from ghosts are ghost bullets (could be improved with better snapshot data)
+        isGhostBullet = gameObject.CompareTag("GhostBullet");
         
         transform.position = snapshot.position;
         
@@ -73,12 +83,37 @@ public class RewindablePlayerBullet : MonoBehaviour, ITimeRewindable
 
     private void OnTriggerEnter2D(Collider2D other)
     {
+        // Handle Player collision
         if (other.CompareTag("Player"))
         {
-            Debug.Log("Hit player!");
-            Destroy(gameObject); 
+            // Only ghost bullets can damage the player
+            if (isGhostBullet || gameObject.CompareTag("GhostBullet"))
+            {
+                Health playerHealth = other.GetComponent<Health>();
+                if (playerHealth != null)
+                {
+                    playerHealth.TakeDamage(damage);
+                    Debug.Log($"Ghost bullet hit player for {damage} damage!");
+                }
+                
+                // Try PlayerHealth component as backup
+                PlayerHealth pH = other.GetComponent<PlayerHealth>();
+                if (pH != null && pH.GetComponent<Health>() != null)
+                {
+                    pH.GetComponent<Health>().TakeDamage(damage);
+                    Debug.Log($"Ghost bullet hit player for {damage} damage!");
+                }
+            }
+            else
+            {
+                Debug.Log("Player bullet hit player - no damage");
+            }
+            
+            Destroy(gameObject);
+            return;
         }
 
+        // Handle Enemy collision
         if (other.CompareTag("Enemy"))
         {
             Health enemyHealth = other.GetComponent<Health>();
@@ -90,30 +125,54 @@ public class RewindablePlayerBullet : MonoBehaviour, ITimeRewindable
                 RewindableEnemyController enemyController = other.GetComponent<RewindableEnemyController>();
                 if (enemyController != null)
                 {
-                    // Find the player who shot this bullet
-                    GameObject player = GameObject.FindGameObjectWithTag("Player");
-                    if (player != null)
-                        enemyController.SetLastDamagedBy(player.transform);
+                    // Find the appropriate shooter
+                    if (isGhostBullet || gameObject.CompareTag("GhostBullet"))
+                    {
+                        // Find the ghost that shot this
+                        GhostPlayer ghost = FindObjectOfType<GhostPlayer>();
+                        if (ghost != null)
+                            enemyController.SetLastDamagedBy(ghost.transform);
+                    }
+                    else
+                    {
+                        // Find the player who shot this bullet
+                        GameObject player = GameObject.FindGameObjectWithTag("Player");
+                        if (player != null)
+                            enemyController.SetLastDamagedBy(player.transform);
+                    }
                 }
             }
             Destroy(gameObject);
+            return;
         }
         
+        // Handle Terrain collision
         if (other.CompareTag("Terrain"))
         {
             Destroy(gameObject);
+            return;
         }
         
-        // Add ghost collision handling
+        // Handle Ghost collision
         if (other.CompareTag("Ghost"))
         {
-            GhostDamageHandler ghost = other.GetComponent<GhostDamageHandler>();
-            if (ghost != null)
+            // Only non-ghost bullets can damage ghosts (prevent friendly fire)
+            if (!isGhostBullet && !gameObject.CompareTag("GhostBullet"))
             {
-                // The GhostDamageHandler will handle the damage
-                // Bullet destruction is handled in GhostDamageHandler
-                return;
+                GhostPlayer ghost = other.GetComponent<GhostPlayer>();
+                if (ghost != null)
+                {
+                    ghost.TakeDamage(damage);
+                    Debug.Log($"Player bullet hit ghost for {damage} damage!");
+                }
             }
+            else
+            {
+                Debug.Log("Ghost bullet hit ghost - no friendly fire");
+            }
+            
+            Destroy(gameObject);
+            return;
         }
     }
     
@@ -139,7 +198,7 @@ public class RewindablePlayerBullet : MonoBehaviour, ITimeRewindable
             damage,
             remainingLifetime,
             true, // isPlayerBullet
-            "Player"
+            isGhostBullet ? "Ghost" : "Player"
         );
     }
     
@@ -151,5 +210,11 @@ public class RewindablePlayerBullet : MonoBehaviour, ITimeRewindable
     public bool IsActive()
     {
         return gameObject.activeInHierarchy && remainingLifetime > 0;
+    }
+    
+    // Public method to mark bullet as from ghost
+    public void SetAsGhostBullet(bool isGhost = true)
+    {
+        isGhostBullet = isGhost;
     }
 }

@@ -70,6 +70,12 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
     {
         UpdateTargeting();
         HandleShooting();
+        
+        // Update player list every few frames to catch new ghosts
+        if (Time.frameCount % 30 == 0) // Every 0.5 seconds at 60fps
+        {
+            UpdatePlayerList();
+        }
     }
 
     void FixedUpdate()
@@ -182,7 +188,9 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
         if (hit.collider != null)
         {
             // Blocked if the first thing hit is not the target
-            if (hit.collider.transform != target && !hit.collider.CompareTag("Player"))
+            if (hit.collider.transform != target && 
+                !hit.collider.CompareTag("Player") && 
+                !hit.collider.CompareTag("Ghost")) // Add ghost tag check
                 return false;
         }
 
@@ -267,8 +275,24 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
 
     void UpdatePlayerList()
     {
+        // Clear and rebuild the list to include both players and ghosts
+        allPlayers.Clear();
+        
+        // Find regular players
         foreach (var go in GameObject.FindGameObjectsWithTag("Player"))
             RegisterPlayer(go.transform);
+        
+        // Find ghost players - assuming they have tag "Ghost" or component "GhostPlayer"
+        foreach (var go in GameObject.FindGameObjectsWithTag("Ghost"))
+            RegisterPlayer(go.transform);
+        
+        // Alternative: Find by component if ghosts don't have specific tag
+        GhostPlayer[] ghosts = FindObjectsOfType<GhostPlayer>();
+        foreach (var ghost in ghosts)
+        {
+            if (ghost.gameObject.activeInHierarchy)
+                RegisterPlayer(ghost.transform);
+        }
     }
 
     // === Rewind Integration ===
