@@ -26,6 +26,8 @@ public class EnemySpawner : MonoBehaviour
         int groupAttempts = 0;
         int groupsSpawned = 0;
 
+        List<Vector3> spawnedPositions = new();
+
         while (groupsSpawned < totalGroups && groupAttempts < 1000)
         {
             groupAttempts++;
@@ -54,8 +56,26 @@ public class EnemySpawner : MonoBehaviour
 
                 if (cellX >= 0 && cellX < mapWidth && cellY >= 0 && cellY < mapHeight && walkable[cellX, cellY])
                 {
-                    SpawnEnemy(spawnPos);
-                    enemiesSpawned++;
+                    // Check if this spawn point is blocked by walls
+                    Collider2D hit = Physics2D.OverlapCircle(spawnPos, 0.4f, LayerMask.GetMask("Terrain"));
+                    if (hit != null) continue;
+                    bool tooClose = false;
+
+                    foreach (var pos in spawnedPositions)
+                    {
+                        if (Vector2.Distance(pos, spawnPos) < 0.9f)
+                        {
+                            tooClose = true;
+                            break;
+                        }
+                    }
+
+                    if (!tooClose)
+                    {
+                        SpawnEnemy(spawnPos);
+                        spawnedPositions.Add(spawnPos);
+                        enemiesSpawned++;
+                    }
                 }
             }
 
