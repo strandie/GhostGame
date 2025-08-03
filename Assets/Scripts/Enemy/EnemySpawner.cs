@@ -7,7 +7,7 @@ public class EnemySpawner : MonoBehaviour
     public GameObject enemyPrefab;
 
     [Header("Group Spawning")]
-    public int totalGroups = 3;                 // How many groups to spawn
+    public int totalGroups = 3;
     public int minPerGroup = 3;
     public int maxPerGroup = 6;
     public float groupRadius = 2f;
@@ -16,12 +16,21 @@ public class EnemySpawner : MonoBehaviour
     private int mapWidth, mapHeight;
     private Vector2Int worldOffset;
 
+    private List<GameObject> activeEnemies = new();
+
+    public void Update()
+    {
+        Debug.Log(activeEnemies.Count);
+    }
+
     public void SpawnEnemies(bool[,] walkableMap, int mapWidth, int mapHeight, Vector2Int offset)
     {
         this.walkable = walkableMap;
         this.mapWidth = mapWidth;
         this.mapHeight = mapHeight;
         this.worldOffset = offset;
+
+        activeEnemies.Clear();
 
         int groupAttempts = 0;
         int groupsSpawned = 0;
@@ -56,11 +65,10 @@ public class EnemySpawner : MonoBehaviour
 
                 if (cellX >= 0 && cellX < mapWidth && cellY >= 0 && cellY < mapHeight && walkable[cellX, cellY])
                 {
-                    // Check if this spawn point is blocked by walls
                     Collider2D hit = Physics2D.OverlapCircle(spawnPos, 0.4f, LayerMask.GetMask("Terrain"));
                     if (hit != null) continue;
-                    bool tooClose = false;
 
+                    bool tooClose = false;
                     foreach (var pos in spawnedPositions)
                     {
                         if (Vector2.Distance(pos, spawnPos) < 0.9f)
@@ -72,7 +80,8 @@ public class EnemySpawner : MonoBehaviour
 
                     if (!tooClose)
                     {
-                        SpawnEnemy(spawnPos);
+                        GameObject enemy = SpawnEnemy(spawnPos);
+                        activeEnemies.Add(enemy);
                         spawnedPositions.Add(spawnPos);
                         enemiesSpawned++;
                     }
@@ -84,12 +93,12 @@ public class EnemySpawner : MonoBehaviour
         }
 
         Debug.Log($"Spawned {groupsSpawned} groups of enemies.");
+        StartCoroutine(CheckEnemiesRoutine());
     }
 
-    void SpawnEnemy(Vector3 position)
+    GameObject SpawnEnemy(Vector3 position)
     {
         GameObject enemy = Instantiate(enemyPrefab, position, Quaternion.identity);
-
         Health health = enemy.GetComponent<Health>();
         HealthBarUI hbui = enemy.GetComponentInChildren<HealthBarUI>();
 
@@ -97,6 +106,33 @@ public class EnemySpawner : MonoBehaviour
         {
             hbui.health = health;
             hbui.slider.value = health.CurrentHealth / health.MaxHealth;
+        }
+
+        return enemy;
+    }
+
+    IEnumerator CheckEnemiesRoutine()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(1f);
+
+            activeEnemies.RemoveAll(enemy =>
+            {
+                if (enemy == null) return true;
+
+                var controller = enemy.GetComponent<RewindableEnemyController>();
+                return controller == null || !controller.IsActive();  // <-- use IsActive
+            });
+
+            if (activeEnemies.Count == 0)
+            {
+                Debug.Log("All enemies eliminated. Regenerating stage.");
+                StageGenerator stage = FindObjectOfType<StageGenerator>();
+                if (stage != null)
+                    stage.RegenerateStage();
+                yield break;
+            }
         }
     }
 }

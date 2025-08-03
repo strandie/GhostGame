@@ -188,6 +188,7 @@ MonoBehaviour:
   snapshotsPerSecond: 30
   rewindKey: 324
   ghostPlayerPrefab: {fileID: 3612694641499282806, guid: 8de3163c0c7e2f045a2569c6bc3072fb, type: 3}
+  rewindCooldown: 10
   playerBulletPrefab: {fileID: 2300189211221088423, guid: e763d734a35483d4e901c2affcacd741, type: 3}
   enemyBulletPrefab: {fileID: 2300189211221088423, guid: 25745d248c0da454ca2f44493e502833, type: 3}
 --- !u!4 &420774173
@@ -313,6 +314,7 @@ MonoBehaviour:
   snapshotsPerSecond: 30
   rewindKey: 324
   ghostPlayerPrefab: {fileID: 3612694641499282806, guid: 8de3163c0c7e2f045a2569c6bc3072fb, type: 3}
+  rewindCooldown: 10
   playerBulletPrefab: {fileID: 0}
   enemyBulletPrefab: {fileID: 0}
 --- !u!4 &651684464
@@ -527,6 +529,7 @@ MonoBehaviour:
   padding: 10
   blockFillChance: 0.05
   minWalkableRatio: 0.1
+  playerSpawnWorldPos: {x: 0, y: 0, z: 0}
 --- !u!156049354 &867855261
 Grid:
   m_ObjectHideFlags: 0
@@ -785,6 +788,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxHealth: 100
   currentHealth: 0
+  allowDestruction: 1
   onHealthChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -952,7 +956,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   enemyPrefab: {fileID: 5485169054191972450, guid: 03b86d7be60c4ce4181d7bbd0c497c1e, type: 3}
-  totalGroups: 3
+  totalGroups: 1
   minPerGroup: 3
   maxPerGroup: 6
   groupRadius: 2

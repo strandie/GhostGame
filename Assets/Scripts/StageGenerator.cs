@@ -38,6 +38,14 @@ public class StageGenerator : MonoBehaviour
     void Start()
     {
         GenerateStage();
+
+        // Move player to spawn position
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+        if (player != null)
+        {
+            player.transform.position = playerSpawnWorldPos;
+        }
+
         // Call enemy spawner after terrain is finalized
         EnemySpawner spawner = FindObjectOfType<EnemySpawner>();
         if (spawner != null)
@@ -53,10 +61,11 @@ public class StageGenerator : MonoBehaviour
         mapHeight = height + padding * 2;
         walkable = new bool[mapWidth, mapHeight];
 
-        Vector2Int center = new Vector2Int(mapWidth / 2, mapHeight / 2);
+        Vector2Int center = new Vector2Int(padding + 2, padding + 2); // center of 3x3 reserved area
 
         FillGroundTiles();
         GenerateBlockClusters();
+        ReservePlayerSpawnArea(); // 👈 add here
         EnsureConnectivity(center);
         RemoveDiagonalConnections(); // Added step to fix diagonals
         Remove1x1Holes();
@@ -285,7 +294,7 @@ public class StageGenerator : MonoBehaviour
             GenerateStage(); // Recursive call
         }
     }
-    
+
     void Remove1x1Holes()
     {
         for (int x = 1; x < mapWidth - 1; x++)
@@ -304,6 +313,53 @@ public class StageGenerator : MonoBehaviour
                     }
                 }
             }
+        }
+    }
+
+    public Vector3 playerSpawnWorldPos; // Add this at the top of the class
+
+    void ReservePlayerSpawnArea()
+    {
+        int spawnX = padding + 1;
+        int spawnY = padding + 1;
+
+        for (int x = 0; x < 3; x++)
+        {
+            for (int y = 0; y < 3; y++)
+            {
+                walkable[spawnX + x, spawnY + y] = true;
+            }
+        }
+
+        // Save the center position in world space
+        int centerX = spawnX + 1;
+        int centerY = spawnY + 1;
+        playerSpawnWorldPos = new Vector3(
+            centerX + -mapWidth / 2 + 0.5f,
+            centerY + -mapHeight / 2 + 0.5f,
+            0f
+        );
+    }
+    
+    public void RegenerateStage()
+    {
+        groundTilemap.ClearAllTiles();
+        blockTilemap.ClearAllTiles();
+        roofTilemap.ClearAllTiles();
+        GenerateStage();
+
+        // Respawn player at safe zone
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+        if (player != null)
+        {
+            player.transform.position = playerSpawnWorldPos;
+        }
+
+        EnemySpawner spawner = FindObjectOfType<EnemySpawner>();
+        if (spawner != null)
+        {
+            Vector2Int offset = new Vector2Int(-mapWidth / 2, -mapHeight / 2);
+            spawner.SpawnEnemies(walkable, mapWidth, mapHeight, offset);
         }
     }
 }
