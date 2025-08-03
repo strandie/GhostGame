@@ -188,6 +188,10 @@ public class GhostPlayer : MonoBehaviour
             
         Vector2 spawnPos = (Vector2)ghostFirePoint.position + direction * 0.2f;
         GameObject bullet = Instantiate(ghostBulletPrefab, spawnPos, Quaternion.identity);
+
+        AudioSource audio = GetComponent<AudioSource>();
+        if (audio != null)
+            audio.Play();
         
         RewindablePlayerBullet bulletScript = bullet.GetComponent<RewindablePlayerBullet>();
         if (bulletScript != null)

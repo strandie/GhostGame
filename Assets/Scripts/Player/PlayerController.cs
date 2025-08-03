@@ -101,6 +101,9 @@ public class PlayerController : MonoBehaviour, ITimeRewindable
         if (Input.GetMouseButtonDown(0))
         {
             Shoot();
+            AudioSource audio = GetComponent<AudioSource>();
+            if (audio != null)
+                audio.Play();
         }
     }
 

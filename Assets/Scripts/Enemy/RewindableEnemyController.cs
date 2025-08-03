@@ -109,6 +109,9 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
     {
         if (TimeManager.Instance != null)
             TimeManager.Instance.UnregisterEntity(this);
+        AudioSource audio = GetComponent<AudioSource>();
+        if (audio != null)
+            audio.Play();
     }
 
     // === Movement ===
@@ -264,7 +267,10 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
         {
             bulletScript.Initialize(dir, 10f);
         }
-    }
+        AudioSource audio = GetComponent<AudioSource>();
+        if (audio != null)
+            audio.Play();
+        }
 
     bool CanShootTarget(Transform target)
     {
