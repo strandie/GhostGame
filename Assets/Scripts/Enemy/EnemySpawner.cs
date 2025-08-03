@@ -36,6 +36,7 @@ public class EnemySpawner : MonoBehaviour
         int groupsSpawned = 0;
 
         List<Vector3> spawnedPositions = new();
+        Vector3 playerPos = GameObject.FindGameObjectWithTag("Player").transform.position;
 
         while (groupsSpawned < totalGroups && groupAttempts < 1000)
         {
@@ -48,6 +49,10 @@ public class EnemySpawner : MonoBehaviour
                 continue;
 
             Vector3 groupCenter = new Vector3(x + worldOffset.x + 0.5f, y + worldOffset.y + 0.5f, 0);
+
+            // ✅ Avoid 15x15 square around player
+            if (Vector2.Distance(groupCenter, playerPos) < 7.5f)
+                continue;
             int enemiesInGroup = Random.Range(minPerGroup, maxPerGroup + 1);
 
             int enemiesSpawned = 0;
