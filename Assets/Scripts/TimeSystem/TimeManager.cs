@@ -42,9 +42,9 @@ public class TimeManager : MonoBehaviour
     public float waveIntensity = 0.3f;
     public Color waveColor = new Color(0.2f, 0.6f, 1f, 0.4f); // Blue wave
     [Tooltip("Clock animation properties")]
-    public float clockSpinSpeed = -3000f; // degrees per animation
+    public float clockSpinSpeed = 1440f; // degrees per animation
     public float clockMaxScale = 1.5f;
-    public float clockMinScale = 0.3f;
+    public float clockMinScale = 0.1f;
     
     private Queue<GameStateSnapshot> gameHistory = new Queue<GameStateSnapshot>();
     private float snapshotInterval;
