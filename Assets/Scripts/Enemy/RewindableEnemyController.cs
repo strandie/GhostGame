@@ -41,11 +41,19 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
 
     private EnemyDeathHandler deathHandler;
 
+    [Header("Animation")]
+    public Animator animator;
+    public SpriteRenderer spriteRenderer;
+
+
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         enemyHealth = GetComponent<Health>();
         entityId = System.Guid.NewGuid().ToString();
+
+        if (animator == null)
+            animator = GetComponent<Animator>();
 
         GameObject tilemapObj = GameObject.FindGameObjectWithTag("Terrain");
         if (tilemapObj != null)
@@ -83,6 +91,18 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
     void FixedUpdate()
     {
         HandleMovement();
+        
+        if (animator != null)
+        {
+            bool isMoving = rb.velocity.sqrMagnitude > 0.05f;
+            animator.SetBool("isMoving", isMoving);
+        }
+
+        if (spriteRenderer != null && currentTarget != null)
+        {
+            Vector2 toTarget = currentTarget.position - transform.position;
+            spriteRenderer.flipX = toTarget.x < 0f;
+        }
     }
 
     void OnDestroy()
@@ -99,62 +119,60 @@ public class RewindableEnemyController : MonoBehaviour, ITimeRewindable
 
         if (currentTarget == null)
         {
-            // Smooth wander behavior
+            // Wander behavior
             wanderTimer -= Time.fixedDeltaTime;
             if (wanderTimer <= 0f)
             {
                 wanderTimer = wanderChangeInterval;
                 wanderDirection = GetRandomDirection();
             }
-
-            // Slowly blend to the new direction
-            wanderDirection = Vector2.Lerp(wanderDirection, GetRandomDirection(), 0.05f).normalized;
             movement = wanderDirection;
         }
         else
         {
-            // Chase behavior with smooth weaving
+            // Chase behavior
             if (isChasePaused)
             {
                 chasePauseTimer -= Time.fixedDeltaTime;
                 if (chasePauseTimer > 0f)
+                {
+                    // Stop moving during pause
+                    rb.velocity = Vector2.zero;
                     return;
-
+                }
                 isChasePaused = false;
             }
 
             Vector2 toTarget = (currentTarget.position - transform.position).normalized;
-
+            
             // Weaving
-            float weaveAmount = 0.4f;  // Slightly reduced for smoother feel
-            float weaveSpeed = 3f;     // Matches movement speed better
+            float weaveAmount = 0.4f;
+            float weaveSpeed = 3f;
             Vector2 perp = new Vector2(-toTarget.y, toTarget.x);
             float sine = Mathf.Sin(Time.time * weaveSpeed);
             Vector2 weave = perp * sine * weaveAmount;
 
-            Vector2 desiredDirection = (toTarget + weave).normalized;
-
-            // Blend to the final direction for polish
-            movement = Vector2.Lerp(rb.velocity.normalized, desiredDirection, 0.2f).normalized;
+            movement = (toTarget + weave).normalized;
 
             // Setup next chase pause
             isChasePaused = true;
-            chasePauseTimer = chasePauseDuration + Random.Range(0f, 0.15f); // Slight variation
+            chasePauseTimer = chasePauseDuration + Random.Range(0f, 0.15f);
         }
 
-        // Attempt to move with smoother physics-aware check
-        Vector2 targetPos = rb.position + movement * moveSpeed * Time.fixedDeltaTime;
-
-        float checkRadius = 0.15f;  // Slightly larger to prevent edge clipping
+        // Use velocity instead of MovePosition
+        Vector2 targetVelocity = movement * moveSpeed;
+        
+        // Check for obstacles
+        float checkRadius = 0.15f;
         RaycastHit2D hit = Physics2D.CircleCast(rb.position, checkRadius, movement, moveSpeed * Time.fixedDeltaTime, LayerMask.GetMask("Terrain"));
 
         if (hit.collider == null)
         {
-            rb.MovePosition(targetPos);
+            rb.velocity = targetVelocity;
         }
         else
         {
-            // Reflect or nudge in a new direction if blocked
+            rb.velocity = Vector2.zero;
             wanderDirection = Vector2.Reflect(movement, hit.normal);
         }
     }
